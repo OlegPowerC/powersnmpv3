@@ -1,0 +1,4 @@
+github.com/OlegPowerC/asn1modsnmp v0.0.0-20260114143246-37203dd7309e h1:0smtsxt6rJNhx3H44NO3RIb8RbkrEFcDHppP7M4660w=
+github.com/OlegPowerC/asn1modsnmp v0.0.0-20260114143246-37203dd7309e/go.mod h1:uouUzRmHKGd9o7y6AM7vqFOhsNLTNGKas8tcIM12r6E=
+gitlab.com/powerc-grp/powersnmpv3 v0.0.0-20260118160741-8ec928ffe0fd h1:eIZxhOcSZhyUBjzIyKF2FUQi0FAnO8nSDfKYx6tzpvM=
+gitlab.com/powerc-grp/powersnmpv3 v0.0.0-20260118160741-8ec928ffe0fd/go.mod h1:XjPjrBRVVNc0hfcB8BuDXBzAQNEo/iCsjDxjRKENqD8=
