@@ -33,7 +33,7 @@ go get github.com/OlegPowerC/powersnmpv3
 
 ### SNMPv3 Get
 
-```go
+```
 package main
 
 import (
@@ -82,7 +82,7 @@ func main() {
 
 ### SNMPv2c Get
 
-```go
+```
 device := snmp.NetworkDevice{
     IPaddress: "192.168.1.1",
     Port:      161,
@@ -106,7 +106,7 @@ sess, err := snmp.SNMP_Init(device)
 
 Device configuration for session initialization.
 
-```go
+```
 type NetworkDevice struct {
     IPaddress      string             // Device IP address
     Port           int                // UDP port (usually 161)
@@ -119,7 +119,7 @@ type NetworkDevice struct {
 
 SNMP session parameters.
 
-```go
+```
 type SNMPUserParameters struct {
     SNMPversion      int    // 2 for v2c, 3 for v3
     Username         string // Username (v3)
@@ -139,7 +139,7 @@ type SNMPUserParameters struct {
 
 Active SNMP session. Created via `SNMP_Init()`.
 
-```go
+```
 type SNMPv3Session struct {
     IPaddress  string
     Port       int
@@ -153,7 +153,7 @@ type SNMPv3Session struct {
 
 SNMP request result - OID and value pair.
 
-```go
+```
 type SNMP_Packet_V2_Decoded_VarBind struct {
     RSnmpOID []int   // OID as int array
     RSnmpVar SNMPVar // Variable value
@@ -164,7 +164,7 @@ type SNMP_Packet_V2_Decoded_VarBind struct {
 
 SNMP variable with type and value.
 
-```go
+```
 type SNMPVar struct {
     ValueType  int    // Value type (ASN.1 tag)
     ValueClass int    // Class (Universal, Application, Context, Private)
@@ -177,7 +177,7 @@ type SNMPVar struct {
 
 Result for streaming operations via channels.
 
-```go
+```
 type ChanDataWErr struct {
     Data  SNMP_Packet_V2_Decoded_VarBind // Data
     Error error                          // Error (nil if OK)
@@ -188,7 +188,7 @@ type ChanDataWErr struct {
 
 Parameters for TRAP/INFORM reception.
 
-```go
+```
 type SNMPTrapParameters struct {
     SNMPversion  int    // 2 or 3
     Username     string // Username (v3)
