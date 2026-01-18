@@ -768,7 +768,7 @@ go test -v -args \
 
 **Пример:**
 ```bash
-go test -v -args -h 192.168.55.252 -u SNMPv3-U -a sha -A trdv09op -x aes -X trdv09op -c private123
+go test -v -args -h 192.168.1.252 -u SNMPv3-U -a sha -A test123 -x aes -X test321 -c private123
 ```
 
 ### Что тестируется
