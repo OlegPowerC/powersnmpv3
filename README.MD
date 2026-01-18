@@ -210,7 +210,7 @@ type SNMPTrapParameters struct {
 
 Creates and initializes SNMP session. Performs Engine Discovery for SNMPv3.
 
-```go
+```
 func SNMP_Init(Ndev NetworkDevice) (*SNMPv3Session, error)
 ```
 
@@ -222,7 +222,7 @@ func SNMP_Init(Ndev NetworkDevice) (*SNMPv3Session, error)
 - `error` - initialization error or nil
 
 **Example:**
-```go
+```
 sess, err := snmp.SNMP_Init(device)
 if err != nil {
     log.Fatal("Init failed:", err)
@@ -234,7 +234,7 @@ defer sess.Close()
 
 Closes UDP connection and releases resources.
 
-```go
+```
 func (s *SNMPv3Session) Close() error
 ```
 
@@ -246,7 +246,7 @@ func (s *SNMPv3Session) Close() error
 
 Performs SNMP GET request for a single OID.
 
-```go
+```
 func (s *SNMPv3Session) SNMP_Get(Oid []int) ([]SNMP_Packet_V2_Decoded_VarBind, error)
 ```
 
@@ -258,7 +258,7 @@ func (s *SNMPv3Session) SNMP_Get(Oid []int) ([]SNMP_Packet_V2_Decoded_VarBind, e
 - `error` - fatal error or nil
 
 **Example:**
-```go
+```
 oid, _ := snmp.Convert_OID_StringToIntArray_RAW("1.3.6.1.2.1.1.1.0")
 result, err := sess.SNMP_Get(oid)
 ```
@@ -267,7 +267,7 @@ result, err := sess.SNMP_Get(oid)
 
 Performs SNMP GET request for multiple OIDs in a single PDU.
 
-```go
+```
 func (s *SNMPv3Session) SNMP_GetMulti(OidVar []SNMP_Packet_V2_Decoded_VarBind) ([]SNMP_Packet_V2_Decoded_VarBind, error)
 ```
 
@@ -279,7 +279,7 @@ func (s *SNMPv3Session) SNMP_GetMulti(OidVar []SNMP_Packet_V2_Decoded_VarBind) (
 - `error` - can be partial error (`SNMPne_Errors`) or fatal
 
 **Example:**
-```go
+```
 oids := []snmp.SNMP_Packet_V2_Decoded_VarBind{
     {RSnmpOID: oid1},
     {RSnmpOID: oid2},
@@ -292,7 +292,7 @@ results, err := sess.SNMP_GetMulti(oids)
 
 Performs complete SNMP Walk of subtree using GETNEXT.
 
-```go
+```
 func (s *SNMPv3Session) SNMP_Walk(oid []int) ([]SNMP_Packet_V2_Decoded_VarBind, error)
 ```
 
@@ -304,7 +304,7 @@ func (s *SNMPv3Session) SNMP_Walk(oid []int) ([]SNMP_Packet_V2_Decoded_VarBind, 
 - `error` - error or nil
 
 **Example:**
-```go
+```
 // Walk ifDescr (1.3.6.1.2.1.2.2.1.2)
 oid, _ := snmp.Convert_OID_StringToIntArray_RAW("1.3.6.1.2.1.2.2.1.2")
 interfaces, err := sess.SNMP_Walk(oid)
@@ -317,7 +317,7 @@ for _, iface := range interfaces {
 
 Performs high-performance SNMP Walk using GETBULK.
 
-```go
+```
 func (s *SNMPv3Session) SNMP_BulkWalk(oid []int) ([]SNMP_Packet_V2_Decoded_VarBind, error)
 ```
 
@@ -329,7 +329,7 @@ Uses `MaxRepetitions` to get multiple values per request.
 
 Streaming Walk via channel. Results are sent as received.
 
-```go
+```
 func (s *SNMPv3Session) SNMP_Walk_WChan(oid []int, CData chan<- ChanDataWErr)
 ```
 
@@ -338,7 +338,7 @@ func (s *SNMPv3Session) SNMP_Walk_WChan(oid []int, CData chan<- ChanDataWErr)
 - `CData` - channel for results (closed on completion)
 
 **Example:**
-```go
+```
 ch := make(chan snmp.ChanDataWErr)
 go sess.SNMP_Walk_WChan(oid, ch)
 
@@ -357,7 +357,7 @@ for result := range ch {
 
 Streaming BulkWalk via channel.
 
-```go
+```
 func (s *SNMPv3Session) SNMP_BulkWalk_WChan(oid []int, CData chan<- ChanDataWErr)
 ```
 
@@ -371,7 +371,7 @@ Similar to `SNMP_Walk_WChan`, but uses GETBULK.
 
 Performs SNMP SET for a single OID.
 
-```go
+```
 func (s *SNMPv3Session) SNMP_Set(Oid []int, VBvalue SNMPVar) ([]SNMP_Packet_V2_Decoded_VarBind, error)
 ```
 
@@ -384,7 +384,7 @@ func (s *SNMPv3Session) SNMP_Set(Oid []int, VBvalue SNMPVar) ([]SNMP_Packet_V2_D
 - `error` - error or nil
 
 **Example:**
-```go
+```
 oid, _ := snmp.Convert_OID_StringToIntArray_RAW("1.3.6.1.2.1.1.6.0") // sysLocation
 value := snmp.SetSNMPVar_OctetString("Server Room A1")
 result, err := sess.SNMP_Set(oid, value)
@@ -394,7 +394,7 @@ result, err := sess.SNMP_Set(oid, value)
 
 Performs SNMP SET for multiple OIDs in a single PDU.
 
-```go
+```
 func (s *SNMPv3Session) SNMP_SetMulti(OidVar []SNMP_Packet_V2_Decoded_VarBind) ([]SNMP_Packet_V2_Decoded_VarBind, error)
 ```
 
@@ -406,7 +406,7 @@ func (s *SNMPv3Session) SNMP_SetMulti(OidVar []SNMP_Packet_V2_Decoded_VarBind) (
 
 Creates SNMP OctetString.
 
-```go
+```
 func SetSNMPVar_OctetString(str string) SNMPVar
 ```
 
@@ -414,7 +414,7 @@ func SetSNMPVar_OctetString(str string) SNMPVar
 
 Creates SNMP Integer.
 
-```go
+```
 func SetSNMPVar_Int(ival int32) SNMPVar
 ```
 
@@ -422,7 +422,7 @@ func SetSNMPVar_Int(ival int32) SNMPVar
 
 Creates SNMP IpAddress.
 
-```go
+```
 func SetSNMPVar_IpAddr(ipval net.IP) (SNMPVar, error)
 ```
 
@@ -434,12 +434,12 @@ func SetSNMPVar_IpAddr(ipval net.IP) (SNMPVar, error)
 
 Converts OID string to BER-encoded int array.
 
-```go
+```
 func Convert_OID_StringToIntArray(OIDStr string) ([]int, error)
 ```
 
 **Example:**
-```go
+```
 oid, err := snmp.Convert_OID_StringToIntArray("1.3.6.1.2.1.1.1.0")
 // oid = []int{43, 6, 1, 2, 1, 1, 1, 0} (BER encoded)
 ```
@@ -449,12 +449,12 @@ oid, err := snmp.Convert_OID_StringToIntArray("1.3.6.1.2.1.1.1.0")
 Converts OID string to "raw" int array (without BER encoding).
 Use for convert string OID to []int for us in the Get/Set/Walk function
 
-```go
+```
 func Convert_OID_StringToIntArray_RAW(OIDStr string) ([]int, error)
 ```
 
 **Example:**
-```go
+```
 oid, err := snmp.Convert_OID_StringToIntArray_RAW("1.3.6.1.2.1.1.1.0")
 // oid = []int{1, 3, 6, 1, 2, 1, 1, 1, 0}
 ```
@@ -463,12 +463,12 @@ oid, err := snmp.Convert_OID_StringToIntArray_RAW("1.3.6.1.2.1.1.1.0")
 
 Converts int array back to OID string.
 
-```go
+```
 func Convert_OID_IntArrayToString_RAW(OIDIntArray []int) string
 ```
 
 **Example:**
-```go
+```
 str := snmp.Convert_OID_IntArrayToString_RAW([]int{1, 3, 6, 1, 2, 1, 1, 1, 0})
 // str = "1.3.6.1.2.1.1.1.0"
 ```
@@ -477,7 +477,7 @@ str := snmp.Convert_OID_IntArrayToString_RAW([]int{1, 3, 6, 1, 2, 1, 1, 1, 0})
 
 Converts SNMPVar to human-readable string.
 
-```go
+```
 func Convert_Variable_To_String(Var SNMPVar) string
 ```
 
@@ -493,12 +493,12 @@ Automatically detects type and formats:
 
 Returns ASN.1/SNMP type name.
 
-```go
+```
 func Convert_ClassTag_to_String(Var SNMPVar) string
 ```
 
 **Example:**
-```go
+```
 typeStr := snmp.Convert_ClassTag_to_String(varbind.RSnmpVar)
 // "Universal OCTET STRING", "Application COUNTER32", etc.
 ```
@@ -511,7 +511,7 @@ typeStr := snmp.Convert_ClassTag_to_String(varbind.RSnmpVar)
 
 Quick extraction of username or community from TRAP packet.
 
-```go
+```
 func ParseTrapUsername(packet []byte) (version int, username string, v3secdata SNMPv3_SecSeq, err error)
 ```
 
@@ -525,7 +525,7 @@ func ParseTrapUsername(packet []byte) (version int, username string, v3secdata S
 
 Full TRAP/INFORM parsing with authentication verification and decryption.
 
-```go
+```
 func ParseTrapWithCredentials(
     SenderIp string,
     SenderPort int,
@@ -548,7 +548,7 @@ func ParseTrapWithCredentials(
 - `err` - error
 
 **Message type constants:**
-```go
+```
 const (
     REPORT_MESSAGE = 1
     TRAP_MESSAGE   = 2
@@ -564,12 +564,12 @@ const (
 
 Checks if OID is within subtree.
 
-```go
+```
 func InSubTreeCheck(OidMain []int, OidCurrent []int) bool
 ```
 
 **Example:**
-```go
+```
 main := []int{1, 3, 6, 1, 2, 1}
 current := []int{1, 3, 6, 1, 2, 1, 1, 1}
 inTree := snmp.InSubTreeCheck(main, current) // true
@@ -579,7 +579,7 @@ inTree := snmp.InSubTreeCheck(main, current) // true
 
 Converts SNMP error code to text.
 
-```go
+```
 func SNMPErrorIntToText(code int) string
 ```
 
@@ -587,7 +587,7 @@ func SNMPErrorIntToText(code int) string
 
 Converts PDU error code to text.
 
-```go
+```
 func SNMPPDUErrorIntToText(code int) string
 ```
 
@@ -603,7 +603,7 @@ The library distinguishes between **fatal** and **partial** errors.
 
 Operation completely failed. Results are unavailable.
 
-```go
+```
 type SNMPfe_Errors struct {
     ErrorStatusRaw int32  // SNMP error code
     ErrorIndexRaw  int32  // Failed OID index
@@ -618,7 +618,7 @@ Examples: network timeout, authentication error, `notWritable`.
 
 Part of request completed successfully. **Results are available!**
 
-```go
+```
 type SNMPne_Errors struct {
     Failedoids []PowerSNMPv3_Errors_FailedOids_Error
 }
@@ -635,13 +635,13 @@ Examples: `noSuchInstance`, `noSuchObject` for some OIDs in GetMulti.
 
 The `ParseError` function helps determine error type:
 
-```go
+```
 func ParseError(err error) (SNMPerr SNMPud_Errors, CommonError error)
 ```
 
 **Returns:**
 
-```go
+```
 type SNMPud_Errors struct {
     IsFatal bool             // true = fatal, false = partial
     Oids    []SNMPud_OidError // List of failed OIDs
@@ -656,7 +656,7 @@ type SNMPud_OidError struct {
 
 **Usage example:**
 
-```go
+```
 results, err := sess.SNMP_GetMulti(oids)
 if err != nil {
     snmpErr, commonErr := snmp.ParseError(err)
@@ -714,7 +714,7 @@ go run examples/SNMPWalk.go -h 192.168.1.1 -v 2 -c public \
 
 TRAP and INFORM message receiver with SNMPv3 support.
 
-```go
+```
 // Configure credentials
 Userv3Map := make(map[string]*snmp.SNMPTrapParameters)
 Userv3Map["snmpuser"] = &snmp.SNMPTrapParameters{

@@ -33,7 +33,7 @@ go get github.com/OlegPowerC/powersnmpv3
 
 ### SNMPv3 Get
 
-```go
+```
 package main
 
 import (
@@ -82,7 +82,7 @@ func main() {
 
 ### SNMPv2c Get
 
-```go
+```
 device := snmp.NetworkDevice{
     IPaddress: "192.168.1.1",
     Port:      161,
@@ -106,7 +106,7 @@ sess, err := snmp.SNMP_Init(device)
 
 Конфигурация устройства для инициализации сессии.
 
-```go
+```
 type NetworkDevice struct {
     IPaddress      string             // IP адрес устройства
     Port           int                // UDP порт (обычно 161)
@@ -119,7 +119,7 @@ type NetworkDevice struct {
 
 Параметры SNMP сессии.
 
-```go
+```
 type SNMPUserParameters struct {
     SNMPversion      int    // 2 для v2c, 3 для v3
     Username         string // Имя пользователя (v3)
@@ -139,7 +139,7 @@ type SNMPUserParameters struct {
 
 Активная SNMP сессия. Создается через `SNMP_Init()`.
 
-```go
+```
 type SNMPv3Session struct {
     IPaddress  string
     Port       int
@@ -153,7 +153,7 @@ type SNMPv3Session struct {
 
 Результат SNMP запроса - пара OID и значение.
 
-```go
+```
 type SNMP_Packet_V2_Decoded_VarBind struct {
     RSnmpOID []int   // OID как массив int
     RSnmpVar SNMPVar // Значение переменной
@@ -164,7 +164,7 @@ type SNMP_Packet_V2_Decoded_VarBind struct {
 
 SNMP переменная с типом и значением.
 
-```go
+```
 type SNMPVar struct {
     ValueType  int    // Тип значения (ASN.1 tag)
     ValueClass int    // Класс (Universal, Application, Context, Private)
@@ -177,7 +177,7 @@ type SNMPVar struct {
 
 Результат для потоковых операций через каналы.
 
-```go
+```
 type ChanDataWErr struct {
     Data  SNMP_Packet_V2_Decoded_VarBind // Данные
     Error error                          // Ошибка (nil если OK)
@@ -188,7 +188,7 @@ type ChanDataWErr struct {
 
 Параметры для приема TRAP/INFORM.
 
-```go
+```
 type SNMPTrapParameters struct {
     SNMPversion  int    // 2 или 3
     Username     string // Имя пользователя (v3)
@@ -210,7 +210,7 @@ type SNMPTrapParameters struct {
 
 Создает и инициализирует SNMP сессию. Для SNMPv3 выполняет Engine Discovery.
 
-```go
+```
 func SNMP_Init(Ndev NetworkDevice) (*SNMPv3Session, error)
 ```
 
@@ -222,7 +222,7 @@ func SNMP_Init(Ndev NetworkDevice) (*SNMPv3Session, error)
 - `error` - ошибка инициализации или nil
 
 **Пример:**
-```go
+```
 sess, err := snmp.SNMP_Init(device)
 if err != nil {
     log.Fatal("Init failed:", err)
@@ -234,7 +234,7 @@ defer sess.Close()
 
 Закрывает UDP соединение и освобождает ресурсы.
 
-```go
+```
 func (s *SNMPv3Session) Close() error
 ```
 
@@ -246,7 +246,7 @@ func (s *SNMPv3Session) Close() error
 
 Выполняет SNMP GET запрос для одного OID.
 
-```go
+```
 func (s *SNMPv3Session) SNMP_Get(Oid []int) ([]SNMP_Packet_V2_Decoded_VarBind, error)
 ```
 
@@ -258,7 +258,7 @@ func (s *SNMPv3Session) SNMP_Get(Oid []int) ([]SNMP_Packet_V2_Decoded_VarBind, e
 - `error` - фатальная ошибка или nil
 
 **Пример:**
-```go
+```
 oid, _ := snmp.Convert_OID_StringToIntArray_RAW("1.3.6.1.2.1.1.1.0")
 result, err := sess.SNMP_Get(oid)
 ```
@@ -267,7 +267,7 @@ result, err := sess.SNMP_Get(oid)
 
 Выполняет SNMP GET запрос для нескольких OID в одном PDU.
 
-```go
+```
 func (s *SNMPv3Session) SNMP_GetMulti(OidVar []SNMP_Packet_V2_Decoded_VarBind) ([]SNMP_Packet_V2_Decoded_VarBind, error)
 ```
 
@@ -279,7 +279,7 @@ func (s *SNMPv3Session) SNMP_GetMulti(OidVar []SNMP_Packet_V2_Decoded_VarBind) (
 - `error` - может быть частичная ошибка (`SNMPne_Errors`) или фатальная
 
 **Пример:**
-```go
+```
 oids := []snmp.SNMP_Packet_V2_Decoded_VarBind{
     {RSnmpOID: oid1},
     {RSnmpOID: oid2},
@@ -292,7 +292,7 @@ results, err := sess.SNMP_GetMulti(oids)
 
 Выполняет полный SNMP Walk поддерева с помощью GETNEXT.
 
-```go
+```
 func (s *SNMPv3Session) SNMP_Walk(oid []int) ([]SNMP_Packet_V2_Decoded_VarBind, error)
 ```
 
@@ -304,7 +304,7 @@ func (s *SNMPv3Session) SNMP_Walk(oid []int) ([]SNMP_Packet_V2_Decoded_VarBind, 
 - `error` - ошибка или nil
 
 **Пример:**
-```go
+```
 // Walk ifDescr (1.3.6.1.2.1.2.2.1.2)
 oid, _ := snmp.Convert_OID_StringToIntArray_RAW("1.3.6.1.2.1.2.2.1.2")
 interfaces, err := sess.SNMP_Walk(oid)
@@ -317,7 +317,7 @@ for _, iface := range interfaces {
 
 Выполняет высокопроизводительный SNMP Walk с помощью GETBULK.
 
-```go
+```
 func (s *SNMPv3Session) SNMP_BulkWalk(oid []int) ([]SNMP_Packet_V2_Decoded_VarBind, error)
 ```
 
@@ -329,7 +329,7 @@ func (s *SNMPv3Session) SNMP_BulkWalk(oid []int) ([]SNMP_Packet_V2_Decoded_VarBi
 
 Потоковый Walk через канал. Результаты отправляются по мере получения.
 
-```go
+```
 func (s *SNMPv3Session) SNMP_Walk_WChan(oid []int, CData chan<- ChanDataWErr)
 ```
 
@@ -338,7 +338,7 @@ func (s *SNMPv3Session) SNMP_Walk_WChan(oid []int, CData chan<- ChanDataWErr)
 - `CData` - канал для результатов (закрывается по завершении)
 
 **Пример:**
-```go
+```
 ch := make(chan snmp.ChanDataWErr)
 go sess.SNMP_Walk_WChan(oid, ch)
 
@@ -357,7 +357,7 @@ for result := range ch {
 
 Потоковый BulkWalk через канал.
 
-```go
+```
 func (s *SNMPv3Session) SNMP_BulkWalk_WChan(oid []int, CData chan<- ChanDataWErr)
 ```
 
@@ -371,7 +371,7 @@ func (s *SNMPv3Session) SNMP_BulkWalk_WChan(oid []int, CData chan<- ChanDataWErr
 
 Выполняет SNMP SET для одного OID.
 
-```go
+```
 func (s *SNMPv3Session) SNMP_Set(Oid []int, VBvalue SNMPVar) ([]SNMP_Packet_V2_Decoded_VarBind, error)
 ```
 
@@ -384,7 +384,7 @@ func (s *SNMPv3Session) SNMP_Set(Oid []int, VBvalue SNMPVar) ([]SNMP_Packet_V2_D
 - `error` - ошибка или nil
 
 **Пример:**
-```go
+```
 oid, _ := snmp.Convert_OID_StringToIntArray_RAW("1.3.6.1.2.1.1.6.0") // sysLocation
 value := snmp.SetSNMPVar_OctetString("Server Room A1")
 result, err := sess.SNMP_Set(oid, value)
@@ -394,7 +394,7 @@ result, err := sess.SNMP_Set(oid, value)
 
 Выполняет SNMP SET для нескольких OID в одном PDU.
 
-```go
+```
 func (s *SNMPv3Session) SNMP_SetMulti(OidVar []SNMP_Packet_V2_Decoded_VarBind) ([]SNMP_Packet_V2_Decoded_VarBind, error)
 ```
 
@@ -406,7 +406,7 @@ func (s *SNMPv3Session) SNMP_SetMulti(OidVar []SNMP_Packet_V2_Decoded_VarBind) (
 
 Создает SNMP OctetString.
 
-```go
+```
 func SetSNMPVar_OctetString(str string) SNMPVar
 ```
 
@@ -414,7 +414,7 @@ func SetSNMPVar_OctetString(str string) SNMPVar
 
 Создает SNMP Integer.
 
-```go
+```
 func SetSNMPVar_Int(ival int32) SNMPVar
 ```
 
@@ -422,7 +422,7 @@ func SetSNMPVar_Int(ival int32) SNMPVar
 
 Создает SNMP IpAddress.
 
-```go
+```
 func SetSNMPVar_IpAddr(ipval net.IP) (SNMPVar, error)
 ```
 
@@ -434,12 +434,12 @@ func SetSNMPVar_IpAddr(ipval net.IP) (SNMPVar, error)
 
 Конвертирует строку OID в BER-кодированный массив int.
 
-```go
+```
 func Convert_OID_StringToIntArray(OIDStr string) ([]int, error)
 ```
 
 **Пример:**
-```go
+```
 oid, err := snmp.Convert_OID_StringToIntArray("1.3.6.1.2.1.1.1.0")
 // oid = []int{43, 6, 1, 2, 1, 1, 1, 0} (BER encoded)
 ```
@@ -449,12 +449,12 @@ oid, err := snmp.Convert_OID_StringToIntArray("1.3.6.1.2.1.1.1.0")
 Конвертирует строку OID в "сырой" массив int (без BER кодирования).  
 Она используется для конвертации строкорого OID в []int для передачи функциям Ge/Set/Walk
 
-```go
+```
 func Convert_OID_StringToIntArray_RAW(OIDStr string) ([]int, error)
 ```
 
 **Пример:**
-```go
+```
 oid, err := snmp.Convert_OID_StringToIntArray_RAW("1.3.6.1.2.1.1.1.0")
 // oid = []int{1, 3, 6, 1, 2, 1, 1, 1, 0}
 ```
@@ -463,12 +463,12 @@ oid, err := snmp.Convert_OID_StringToIntArray_RAW("1.3.6.1.2.1.1.1.0")
 
 Конвертирует массив int обратно в строку OID.
 
-```go
+```
 func Convert_OID_IntArrayToString_RAW(OIDIntArray []int) string
 ```
 
 **Пример:**
-```go
+```
 str := snmp.Convert_OID_IntArrayToString_RAW([]int{1, 3, 6, 1, 2, 1, 1, 1, 0})
 // str = "1.3.6.1.2.1.1.1.0"
 ```
@@ -477,7 +477,7 @@ str := snmp.Convert_OID_IntArrayToString_RAW([]int{1, 3, 6, 1, 2, 1, 1, 1, 0})
 
 Конвертирует SNMPVar в человекочитаемую строку.
 
-```go
+```
 func Convert_Variable_To_String(Var SNMPVar) string
 ```
 
@@ -493,12 +493,12 @@ func Convert_Variable_To_String(Var SNMPVar) string
 
 Возвращает название типа ASN.1/SNMP.
 
-```go
+```
 func Convert_ClassTag_to_String(Var SNMPVar) string
 ```
 
 **Пример:**
-```go
+```
 typeStr := snmp.Convert_ClassTag_to_String(varbind.RSnmpVar)
 // "Universal OCTET STRING", "Application COUNTER32", etc.
 ```
@@ -511,7 +511,7 @@ typeStr := snmp.Convert_ClassTag_to_String(varbind.RSnmpVar)
 
 Быстрое извлечение имени пользователя или community из TRAP пакета.
 
-```go
+```
 func ParseTrapUsername(packet []byte) (version int, username string, v3secdata SNMPv3_SecSeq, err error)
 ```
 
@@ -525,7 +525,7 @@ func ParseTrapUsername(packet []byte) (version int, username string, v3secdata S
 
 Полный разбор TRAP/INFORM с проверкой аутентификации и расшифровкой.
 
-```go
+```
 func ParseTrapWithCredentials(
     SenderIp string,
     SenderPort int,
@@ -548,7 +548,7 @@ func ParseTrapWithCredentials(
 - `err` - ошибка
 
 **Константы типов сообщений:**
-```go
+```
 const (
     REPORT_MESSAGE = 1
     TRAP_MESSAGE   = 2
@@ -564,12 +564,12 @@ const (
 
 Проверяет, находится ли OID в поддереве.
 
-```go
+```
 func InSubTreeCheck(OidMain []int, OidCurrent []int) bool
 ```
 
 **Пример:**
-```go
+```
 main := []int{1, 3, 6, 1, 2, 1}
 current := []int{1, 3, 6, 1, 2, 1, 1, 1}
 inTree := snmp.InSubTreeCheck(main, current) // true
@@ -579,7 +579,7 @@ inTree := snmp.InSubTreeCheck(main, current) // true
 
 Конвертирует код ошибки SNMP в текст.
 
-```go
+```
 func SNMPErrorIntToText(code int) string
 ```
 
@@ -587,7 +587,7 @@ func SNMPErrorIntToText(code int) string
 
 Конвертирует код ошибки PDU в текст.
 
-```go
+```
 func SNMPPDUErrorIntToText(code int) string
 ```
 
@@ -603,7 +603,7 @@ func SNMPPDUErrorIntToText(code int) string
 
 Операция полностью провалилась. Результаты недоступны.
 
-```go
+```
 type SNMPfe_Errors struct {
     ErrorStatusRaw int32  // Код ошибки SNMP
     ErrorIndexRaw  int32  // Индекс проблемного OID
@@ -618,7 +618,7 @@ type SNMPfe_Errors struct {
 
 Часть запроса выполнена успешно. **Результаты доступны!**
 
-```go
+```
 type SNMPne_Errors struct {
     Failedoids []PowerSNMPv3_Errors_FailedOids_Error
 }
@@ -635,13 +635,13 @@ type PowerSNMPv3_Errors_FailedOids_Error struct {
 
 Функция `ParseError` помогает определить тип ошибки:
 
-```go
+```
 func ParseError(err error) (SNMPerr SNMPud_Errors, CommonError error)
 ```
 
 **Возвращает:**
 
-```go
+```
 type SNMPud_Errors struct {
     IsFatal bool             // true = фатальная, false = частичная
     Oids    []SNMPud_OidError // Список проблемных OID
@@ -656,7 +656,7 @@ type SNMPud_OidError struct {
 
 **Пример использования:**
 
-```go
+```
 results, err := sess.SNMP_GetMulti(oids)
 if err != nil {
     snmpErr, commonErr := snmp.ParseError(err)
@@ -714,7 +714,7 @@ go run examples/SNMPWalk.go -h 192.168.1.1 -v 2 -c public \
 
 Приемник TRAP и INFORM сообщений с поддержкой SNMPv3.
 
-```go
+```
 // Настройка учетных данных
 Userv3Map := make(map[string]*snmp.SNMPTrapParameters)
 Userv3Map["snmpuser"] = &snmp.SNMPTrapParameters{
