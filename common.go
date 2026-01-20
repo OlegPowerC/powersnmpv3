@@ -69,7 +69,7 @@ func (e SNMPwrongReqID_MsgId_Errors) Error() string {
 func (e SNMPne_Errors) Error() string {
 	FailedOids := make([]string, len(e.Failedoids))
 	for i, v := range e.Failedoids {
-		FailedOids[i] = fmt.Sprintf("partial, %s (status=%d): %s", SNMPPDUErrorIntToText(v.Error_id), v.Error_id, Convert_OID_IntArrayToString(v.Failedoid))
+		FailedOids[i] = fmt.Sprintf("partial, %s (status=%d): %s", SNMPPDUErrorIntToText(v.Error_id), v.Error_id, Convert_OID_IntArrayToString_RAW(v.Failedoid))
 	}
 	CompleteFailedOidStr := strings.TrimSuffix(strings.Join(FailedOids, ","), ",")
 	return fmt.Sprintf("%s", CompleteFailedOidStr)
