@@ -66,6 +66,7 @@ func (e SNMPwrongReqID_MsgId_Errors) Error() string {
 	return "unknown error code"
 }
 
+// Print partial error
 func (e SNMPne_Errors) Error() string {
 	FailedOids := make([]string, len(e.Failedoids))
 	for i, v := range e.Failedoids {
