@@ -872,6 +872,26 @@ ok      github.com/OlegPowerC/powersnmpv3       2.273s
 
 ---
 
+## Описание модификации стандартного парсера ASN.1
+
+В функции **parseTagAndLength** две проверки на то что short длина закодирована как short (требование DER)  
+
+			ret.length <<= 8
+			ret.length |= int(b)
+			if ret.length == 0 {
+				// DER requires that lengths be minimal.
+				err = StructuralError{"superfluous leading zeros in length"}
+				return
+			}
+
+И
+
+            // Short lengths must be encoded in short form.
+            if ret.length < 0x80 {
+            err = StructuralError{"non-minimal length"}
+            return
+            }
+
 ## Лицензия
 
 MIT License
