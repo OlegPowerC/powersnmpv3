@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"net"
 	"reflect"
+	"slices"
 	"sync/atomic"
 	"time"
 
@@ -83,7 +84,7 @@ func (SNMPparameters *SNMPv3Session) snmpv2_Walk_WChan(Oid []int, ReqType int, C
 		//Обходим результат и проверяем не вышли ли из ветки
 		for _, val := range SNMPGet {
 			//Проверяем не зациклились ли
-			if OidComparation(Oid, val.RSnmpOID) {
+			if len(Oid) == len(val.RSnmpOID) && slices.Equal(Oid, val.RSnmpOID) {
 				ChanData.Data = val
 				ChanData.Error = fmt.Errorf("OID is not increased")
 				CData <- ChanData
