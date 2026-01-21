@@ -690,6 +690,7 @@ func (SNMPparameters *SNMPv3Session) snmpv3_Walk_WChan(Oid []int, ReqType int, C
 				//Non partial error - need to breake walk
 				ChanData.Data = SNMP_Packet_V2_Decoded_VarBind{}
 				ChanData.Error = Err
+				ChanData.ValidData = false
 				CData <- ChanData
 				close(CData)
 				return
@@ -703,6 +704,7 @@ func (SNMPparameters *SNMPv3Session) snmpv3_Walk_WChan(Oid []int, ReqType int, C
 				//Если да то выйдем с ошибкой
 				ChanData.Data = val
 				ChanData.Error = fmt.Errorf("OID is not increased")
+				ChanData.ValidData = false
 				CData <- ChanData
 				close(CData)
 				return
@@ -713,12 +715,14 @@ func (SNMPparameters *SNMPv3Session) snmpv3_Walk_WChan(Oid []int, ReqType int, C
 			} else {
 				ChanData.Data = val
 				ChanData.Error = nil
+				ChanData.ValidData = true
 				CData <- ChanData
 			}
 		}
 
 		if partialErrSend {
 			ChanData.Data = SNMP_Packet_V2_Decoded_VarBind{}
+			ChanData.ValidData = false
 			ChanData.Error = Err
 			CData <- ChanData
 		}

@@ -31,8 +31,9 @@ import (
 //	    }
 //	}
 type ChanDataWErr struct {
-	Data  SNMP_Packet_V2_Decoded_VarBind
-	Error error
+	Data      SNMP_Packet_V2_Decoded_VarBind
+	ValidData bool
+	Error     error
 }
 
 // InSubTreeCheck determines if OidCurrent is within the OidMain MIB subtree.

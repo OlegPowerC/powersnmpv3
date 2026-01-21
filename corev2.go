@@ -77,6 +77,7 @@ func (SNMPparameters *SNMPv3Session) snmpv2_Walk_WChan(Oid []int, ReqType int, C
 		SNMPGet, SNMPGetErr := SNMPparameters.snmpv2_GetSet(OidVarConverted, ReqType)
 		if SNMPGetErr != nil {
 			ChanData.Error = SNMPGetErr
+			ChanData.ValidData
 			CData <- ChanData
 			close(CData)
 			return
