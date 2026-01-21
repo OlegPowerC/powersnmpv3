@@ -12,7 +12,6 @@ import (
 	"fmt"
 	"math/rand"
 	"net"
-	"reflect"
 	"slices"
 	"sync/atomic"
 	"time"
@@ -632,23 +631,37 @@ func (SNMPparameters *SNMPv3Session) snmpv3_Walk(Oid []int, ReqType int) (SNMPDa
 	var RetVar []SNMP_Packet_V2_Decoded_VarBind
 	for a := 0; a < SNMP_MAXIMUMWALK; a++ {
 		SNMPGet, SNMPGetErr := SNMPparameters.snmpv3_GetSet(OidVarConverted, ReqType)
+		partialErr := false
 		if SNMPGetErr != nil {
-			return RetVar, SNMPGetErr
+			var SNMPud_Err SNMPud_Errors
+			var CommonError error
+			SNMPud_Err, CommonError = ParseError(SNMPGetErr)
+			if SNMPud_Err.IsFatal || CommonError != nil {
+				//Фатальные ошибки, сразу выходим
+				return RetVar, SNMPGetErr
+			}
+			partialErr = true
 		}
 		//Обходим результат и проверяем не вышли ли из ветки
 		for _, val := range SNMPGet {
 			//Проверяем не зациклились ли
-			if reflect.DeepEqual(Oid, val.RSnmpOID) {
-				RetVar = append(RetVar, val)
+			if slices.Equal(OidVarConverted[0].RSnmpOID, val.RSnmpOID) {
 				reterr := fmt.Errorf("OID is not increased")
 				return RetVar, reterr
 			}
 			if InSubTreeCheck(Oid, val.RSnmpOID) == false {
+				//Выши за пределы ветки
 				return RetVar, nil
 			} else {
+				//Нормальная ситуация, добавим данные
 				RetVar = append(RetVar, val)
 			}
 		}
+
+		if partialErr {
+			return RetVar, SNMPGetErr
+		}
+
 		if len(SNMPGet) > 0 {
 			OidVarConverted[0].RSnmpOID = SNMPGet[len(SNMPGet)-1].RSnmpOID
 		} else {
@@ -675,19 +688,13 @@ func (SNMPparameters *SNMPv3Session) snmpv3_Walk_WChan(Oid []int, ReqType int, C
 	OidVarConverted := []SNMP_Packet_V2_Decoded_VarBind{{Oid, SNMPvbNullValue}}
 	for a := 0; a < SNMP_MAXIMUMWALK; a++ {
 		Data, Err := SNMPparameters.snmpv3_GetSet(OidVarConverted, ReqType)
-		//if Err != nil {
-		//	ChanData.Error = Err
-		//	CData <- ChanData
-		//	close(CData)
-		//	return
-		//}
 		partialErrSend, needClose := false, false
 		if Err != nil {
 			var SNMPud_Err SNMPud_Errors
 			var CommonError error
 			SNMPud_Err, CommonError = ParseError(Err)
 			if SNMPud_Err.IsFatal || CommonError != nil {
-				//Non partial error - need to breake walk
+				//Фатальные ошибки, сразу выходим
 				ChanData.Data = SNMP_Packet_V2_Decoded_VarBind{}
 				ChanData.Error = Err
 				ChanData.ValidData = false
@@ -701,8 +708,8 @@ func (SNMPparameters *SNMPv3Session) snmpv3_Walk_WChan(Oid []int, ReqType int, C
 		for _, val := range Data {
 			//Проверяем не зациклились ли
 			if slices.Equal(OidVarConverted[0].RSnmpOID, val.RSnmpOID) {
-				//Если да то выйдем с ошибкой
-				ChanData.Data = val
+				//Если да то выйдем с ошибкой, данные не отправляем - это повтор
+				ChanData.Data = SNMP_Packet_V2_Decoded_VarBind{}
 				ChanData.Error = fmt.Errorf("OID is not increased")
 				ChanData.ValidData = false
 				CData <- ChanData

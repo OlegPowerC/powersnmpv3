@@ -9,7 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"reflect"
 	"slices"
 	"sync/atomic"
 	"time"
@@ -129,8 +128,7 @@ func (SNMPparameters *SNMPv3Session) snmpv2_Walk(Oid []int, ReqType int) (SNMPDa
 		//Обходим результат и проверяем не вышли ли из ветки
 		for _, val := range SNMPGet {
 			//Проверяем не зациклились ли
-			if reflect.DeepEqual(Oid, val.RSnmpOID) {
-				RetVar = append(RetVar, val)
+			if slices.Equal(Oid, val.RSnmpOID) {
 				reterr := fmt.Errorf("OID is not increased")
 				return RetVar, reterr
 			}
