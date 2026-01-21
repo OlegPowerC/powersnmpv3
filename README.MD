@@ -871,6 +871,26 @@ ok      github.com/OlegPowerC/powersnmpv3       2.273s
 
 ---
 
+## Performance Comparison (15,411 OIDs, SNMPv3 aes128 sha authPriv)
+
+### BULK Walk
+| Library | Time | Memory | vs Net-SNMP |
+|---------|------|--------|-------------|
+| **PowerSNMPv3** (sync) | **6.22s** | 16 MB | **🏆 100.3%** |
+| Net-SNMP (C) | 6.24s | 9 MB | 100% |
+| PowerSNMPv3 (async) | 6.54s | 10 MB | 95% |
+| SNMP4J (Java) | 8.90s | 147 MB | 70% |
+
+### GetNext Walk
+| Library | Time | Memory | vs Net-SNMP |
+|---------|------|--------|-------------|
+| **PowerSNMPv3** (sync) | **30.51s** | 18 MB | **🏆 101%** |
+| Net-SNMP (C) | 30.87s | 9 MB | 100% |
+| PowerSNMPv3 (async) | 31.55s | 10 MB | 98% |
+| SNMP4J (Java) | 36.02s | 333 MB | 86% |
+
+**PowerSNMPv3 achieves parity with Net-SNMP while using 9-18x less memory than SNMP4J.**
+
 ## License
 
 MIT License
