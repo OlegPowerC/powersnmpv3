@@ -700,7 +700,7 @@ func (SNMPparameters *SNMPv3Session) snmpv3_Walk_WChan(Oid []int, ReqType int, C
 		//Обходим результат и проверяем не вышли ли из ветки
 		for _, val := range Data {
 			//Проверяем не зациклились ли
-			if len(OidVarConverted[0].RSnmpOID) == len(val.RSnmpOID) && slices.Equal(OidVarConverted[0].RSnmpOID, val.RSnmpOID) {
+			if slices.Equal(OidVarConverted[0].RSnmpOID, val.RSnmpOID) {
 				//Если да то выйдем с ошибкой
 				ChanData.Data = val
 				ChanData.Error = fmt.Errorf("OID is not increased")
@@ -725,6 +725,7 @@ func (SNMPparameters *SNMPv3Session) snmpv3_Walk_WChan(Oid []int, ReqType int, C
 			ChanData.ValidData = false
 			ChanData.Error = Err
 			CData <- ChanData
+			needClose = true
 		}
 
 		if needClose {
