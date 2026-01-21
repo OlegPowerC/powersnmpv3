@@ -13,6 +13,7 @@ import (
 	"math/rand"
 	"net"
 	"reflect"
+	"slices"
 	"sync/atomic"
 	"time"
 
@@ -674,21 +675,32 @@ func (SNMPparameters *SNMPv3Session) snmpv3_Walk_WChan(Oid []int, ReqType int, C
 	OidVarConverted := []SNMP_Packet_V2_Decoded_VarBind{{Oid, SNMPvbNullValue}}
 	for a := 0; a < SNMP_MAXIMUMWALK; a++ {
 		Data, Err := SNMPparameters.snmpv3_GetSet(OidVarConverted, ReqType)
+		//if Err != nil {
+		//	ChanData.Error = Err
+		//	CData <- ChanData
+		//	close(CData)
+		//	return
+		//}
+		partialErrSend, needClose := false, false
 		if Err != nil {
 			var SNMPud_Err SNMPud_Errors
 			var CommonError error
 			SNMPud_Err, CommonError = ParseError(Err)
-			ChanData.Error = Err
-			CData <- ChanData
 			if SNMPud_Err.IsFatal || CommonError != nil {
+				//Non partial error - need to breake walk
+				ChanData.Data = SNMP_Packet_V2_Decoded_VarBind{}
+				ChanData.Error = Err
+				CData <- ChanData
 				close(CData)
 				return
 			}
+			partialErrSend = true
 		}
 		//Обходим результат и проверяем не вышли ли из ветки
 		for _, val := range Data {
 			//Проверяем не зациклились ли
-			if reflect.DeepEqual(Oid, val.RSnmpOID) {
+			if len(Oid) == len(val.RSnmpOID) && slices.Equal(Oid, val.RSnmpOID) {
+				//Если да то выйдем с ошибкой
 				ChanData.Data = val
 				ChanData.Error = fmt.Errorf("OID is not increased")
 				CData <- ChanData
@@ -696,21 +708,33 @@ func (SNMPparameters *SNMPv3Session) snmpv3_Walk_WChan(Oid []int, ReqType int, C
 				return
 			}
 			if InSubTreeCheck(Oid, val.RSnmpOID) == false {
-				close(CData)
-				return
+				needClose = true
+				break
 			} else {
 				ChanData.Data = val
 				ChanData.Error = nil
 				CData <- ChanData
 			}
 		}
+
+		if partialErrSend {
+			ChanData.Data = SNMP_Packet_V2_Decoded_VarBind{}
+			ChanData.Error = Err
+			CData <- ChanData
+		}
+
+		if needClose {
+			close(CData)
+			return
+		}
+
+		//Продолжаем Walk
 		if len(Data) > 0 {
 			OidVarConverted[0].RSnmpOID = Data[len(Data)-1].RSnmpOID
 		} else {
 			close(CData)
 			return
 		}
-
 	}
 	close(CData)
 	return

@@ -56,6 +56,33 @@ func InSubTreeCheck(OidMain []int, OidCurrent []int) bool {
 	return true
 }
 
+func OidComparation(Oid1 []int, Oid2 []int) bool {
+	if len(Oid1) != len(Oid2) {
+		return false
+	}
+	for OidElementIndex, OidElement := range Oid1 {
+		if OidElement != Oid2[OidElementIndex] {
+			return false
+		}
+	}
+	return true
+}
+
+func InSubTreeAndEqualCheck(OidMain []int, OidCurrent []int) (InSubTree bool, Equal bool) {
+	if len(OidCurrent) < len(OidMain) {
+		return false, false
+	}
+	for OidElementIndex, OidElement := range OidMain {
+		if OidElement != OidCurrent[OidElementIndex] {
+			return false, false
+		}
+	}
+	if len(OidCurrent) == len(OidMain) {
+		return true, true
+	}
+	return true, false
+}
+
 func (e SNMPwrongReqID_MsgId_Errors) Error() string {
 	switch e.ErrorStatusCode {
 	case PARCE_ERR_WRONGMSGID:

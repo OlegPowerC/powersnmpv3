@@ -526,6 +526,7 @@ func receiverV3parser(SNMPparameters *SNMPv3Session, udppayload []byte, checkmsg
 			//fmt.Errorf("SNMPv2 Error: %s,Error index: %d", SNMPErrorIntToText(int(pdu1.ErrorStatusRaw)), pdu1.ErrorIndexRaw)
 			return ReturnSNMPpacker, umerr
 		}
+		//OID с VarBind в результат не добавляем, а добавляем в ошибочные
 		for _, oidv := range pdu1.VarBinds {
 			if oidv.RSnmpVar.Class == ASNber.ClassContextSpecific && len(oidv.RSnmpVar.FullBytes) == 2 && oidv.RSnmpVar.IsCompound == false {
 				switch oidv.RSnmpVar.Tag {
