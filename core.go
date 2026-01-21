@@ -675,10 +675,15 @@ func (SNMPparameters *SNMPv3Session) snmpv3_Walk_WChan(Oid []int, ReqType int, C
 	for a := 0; a < SNMP_MAXIMUMWALK; a++ {
 		Data, Err := SNMPparameters.snmpv3_GetSet(OidVarConverted, ReqType)
 		if Err != nil {
+			var SNMPud_Err SNMPud_Errors
+			var CommonError error
+			SNMPud_Err, CommonError = ParseError(Err)
 			ChanData.Error = Err
 			CData <- ChanData
-			close(CData)
-			return
+			if SNMPud_Err.IsFatal || CommonError != nil {
+				close(CData)
+				return
+			}
 		}
 		//Обходим результат и проверяем не вышли ли из ветки
 		for _, val := range Data {
