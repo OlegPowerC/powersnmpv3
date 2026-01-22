@@ -200,8 +200,10 @@ func receiverV2parser(SNMPparameters *SNMPv3Session, packet []byte, checkmsg_req
 
 	if pdu1.ErrorStatusRaw != sNMP_ErrNoError {
 		failedOID := []int{}
-		if int(pdu1.ErrorIndexRaw-1) < len(pdu1.VarBinds) {
-			failedOID = pdu1.VarBinds[pdu1.ErrorIndexRaw-1].RSnmpOID
+		if pdu1.ErrorIndexRaw > 0 {
+			if int(pdu1.ErrorIndexRaw-1) < len(pdu1.VarBinds) {
+				failedOID = pdu1.VarBinds[pdu1.ErrorIndexRaw-1].RSnmpOID
+			}
 		}
 		umerr = SNMPfe_Errors{ErrorStatusRaw: pdu1.ErrorStatusRaw, ErrorIndexRaw: pdu1.ErrorIndexRaw, FailedOID: failedOID}
 		//fmt.Errorf("SNMPv2 Error: %s,Error index: %d", SNMPErrorIntToText(int(pdu1.ErrorStatusRaw)), pdu1.ErrorIndexRaw)
@@ -519,9 +521,12 @@ func receiverV3parser(SNMPparameters *SNMPv3Session, udppayload []byte, checkmsg
 		}
 		if pdu1.ErrorStatusRaw != sNMP_ErrNoError {
 			failedOID := []int{}
-			if int(pdu1.ErrorIndexRaw-1) < len(pdu1.VarBinds) {
-				failedOID = pdu1.VarBinds[pdu1.ErrorIndexRaw-1].RSnmpOID
+			if pdu1.ErrorIndexRaw > 0 {
+				if int(pdu1.ErrorIndexRaw-1) < len(pdu1.VarBinds) {
+					failedOID = pdu1.VarBinds[pdu1.ErrorIndexRaw-1].RSnmpOID
+				}
 			}
+
 			umerr = SNMPfe_Errors{ErrorStatusRaw: pdu1.ErrorStatusRaw, ErrorIndexRaw: pdu1.ErrorIndexRaw, FailedOID: failedOID}
 			//fmt.Errorf("SNMPv2 Error: %s,Error index: %d", SNMPErrorIntToText(int(pdu1.ErrorStatusRaw)), pdu1.ErrorIndexRaw)
 			return ReturnSNMPpacker, umerr
