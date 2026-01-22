@@ -871,25 +871,25 @@ ok      github.com/OlegPowerC/powersnmpv3       2.273s
 
 ---
 
-## Performance Comparison (15,411 OIDs, SNMPv3 aes128 sha authPriv)
+## Performance
 
-### BULK Walk
-| Library | Time | Memory | vs Net-SNMP |
-|---------|------|--------|-------------|
-| **PowerSNMPv3** (sync) | **6.22s** | 16 MB | **🏆 100.3%** |
-| Net-SNMP (C) | 6.24s | 9 MB | 100% |
-| PowerSNMPv3 (async) | 6.54s | 10 MB | 95% |
-| SNMP4J (Java) | 8.90s | 147 MB | 70% |
+Benchmarked on 15,381 OIDs (SNMPv3 AES128+SHA, 1Gbps network, Cisco S8000v target):
 
-### GetNext Walk
-| Library | Time | Memory | vs Net-SNMP |
-|---------|------|--------|-------------|
-| **PowerSNMPv3** (sync) | **30.51s** | 18 MB | **🏆 101%** |
-| Net-SNMP (C) | 30.87s | 9 MB | 100% |
-| PowerSNMPv3 (async) | 31.55s | 10 MB | 98% |
-| SNMP4J (Java) | 36.02s | 333 MB | 86% |
+| Implementation | Time | Throughput | Memory |
+|----------------|------|------------|--------|
+| **PowerSNMP (Channel)** ⭐ | **4.02s** | **3,827 OID/s** | 12.4 MB |
+| PowerSNMP (Callback) | 4.46s | 3,449 OID/s | **8.8 MB** |
+| gosnmp | 4.43s | 3,472 OID/s | 10.0 MB |
+| net-snmp (C) | 6.43s | 2,393 OID/s | 8.8 MB |
+| snmp4j (Java) | 8.27s | 1,860 OID/s | 145.6 MB |
 
-**PowerSNMPv3 achieves parity with Net-SNMP while using 9-18x less memory than SNMP4J.**
+**PowerSNMP is 37% faster than net-snmp and uses 12x less memory than snmp4j.**
+
+### When to use each mode:
+
+- **Channel** (`SNMP_BulkWalk_WChan`): Maximum speed for large tables (5000+ OIDs)
+- **Callback** (`SNMP_BulkWalk_WCallback`): Memory-efficient for scripts (100-5000 OIDs)
+- **Sync** (`SNMP_Walk`): Debugging and small queries (<100 OIDs)
 
 ## License
 
