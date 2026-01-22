@@ -866,7 +866,7 @@ ok      github.com/OlegPowerC/powersnmpv3       2.273s
 ## Dependencies
 
 - `github.com/OlegPowerC/asn1modsnmp` - fork of standard `encoding/asn1` with SNMP optimizations:
-  - `ShortLengthAllow` - support for short-length encoding (some switches, e.g., Moxa)
+  - `ShortLengthAllow` - support for short-length encoding (some switches, e.g., Moxa) and indefinite length (include nested)
   - `FindSNMPv3AuthParamsOffset()` - find AuthParams position for USM verification
   - `ExtractDataWOTagAndLen()` - extract data without TLV wrapper for cryptography
 

@@ -874,35 +874,21 @@ ok      github.com/OlegPowerC/powersnmpv3       2.273s
 
 ## Описание модификации стандартного парсера ASN.1
 
-В функции **parseTagAndLength** две проверки на то что short длина закодирована как short (требование DER)  
-
-			ret.length <<= 8
-			ret.length |= int(b)
-			if ret.length == 0 {
-				// DER requires that lengths be minimal.
-				err = StructuralError{"superfluous leading zeros in length"}
-				return
-			}
-
-И
-
-            // Short lengths must be encoded in short form.
-            if ret.length < 0x80 {
-            err = StructuralError{"non-minimal length"}
-            return
-            }
+В парсере переписана функция поиска длины и смещения данных и добавлены две функции предназначеные для SNMP.
+Парсер понимает короткую длинну, закодированную в длинной форме, неопределенную длину (включая вложенную)  
+и полностью соответствует BER (но только на разбор данных). Кодировать данные можно в DER
 
 ## Производительность
 
 Тестировалось на 15,381 OID (SNMPv3 AES128+SHA, 1Gbps сеть, Cisco S8000v в качестве целевого устройства):
 
-| Implementation                 | Time        | Throughput      | Memory     |
-|--------------------------------|-------------|-----------------|------------|
-| **PowerSNMPv3 (Channel)** ⭐   | **4.02s**   | **3,827 OID/s** | 12.4 MB    |
-| PowerSNMPv3 (Callback)         | 4.46s       | 3,449 OID/s     | **8.8 MB** |
-| gosnmp                         | 4.43s       | 3,472 OID/s     | 10.0 MB    |
-| net-snmp (C)                   | 6.43s       | 2,393 OID/s     | 8.8 MB     |
-| snmp4j (Java)                  | 8.27s       | 1,860 OID/s     | 145.6 MB   |
+| Implementation              | Time        | Throughput      | Memory     |
+|-----------------------------|-------------|-----------------|------------|
+| **PowerSNMPv3 (каналы)** ⭐  | **4.02s**   | **3,827 OID/s** | 12.4 MB    |
+| PowerSNMPv3 (Callback)      | 4.46s       | 3,449 OID/s     | **8.8 MB** |
+| gosnmp                      | 4.43s       | 3,472 OID/s     | 10.0 MB    |
+| net-snmp (C)                | 6.43s       | 2,393 OID/s     | 8.8 MB     |
+| snmp4j (Java)               | 8.27s       | 1,860 OID/s     | 145.6 MB   |
 
 **PowerSNMP на 37% быстрее net-snmp и использует в 12 раз меньше памяти чем snmp4j.**
 
