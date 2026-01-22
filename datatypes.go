@@ -135,7 +135,7 @@ type PowerSNMPv3_Errors_FailedOids_Error struct {
 
 type SNMPv3_GlobalData struct {
 	MsgID            int32
-	MsgMaxSize       int
+	MsgMaxSize       uint16
 	MsgFlag          []byte
 	MsgSecurityModel int
 }
@@ -398,6 +398,7 @@ type SNMPUserParameters struct {
 	RetryCount       int
 	TimeoutBtwRepeat int
 	MaxRepetitions   uint16
+	MaxMsgSize       uint16
 	Community        string
 }
 
@@ -454,5 +455,6 @@ type SNMPParameters struct {
 	RetryCount       int
 	TimeoutBtwRepeat int
 	MaxRepetitions   int32
+	MaxMsgSize       uint16
 	Community        string
 }

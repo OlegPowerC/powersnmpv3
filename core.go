@@ -62,6 +62,12 @@ func SNMPv3_Discovery(Ndev NetworkDevice) (SNMPsession *SNMPv3Session, err error
 		Session.SNMPparams.MaxRepetitions = int32(Ndev.SNMPparameters.MaxRepetitions)
 	}
 
+	if Ndev.SNMPparameters.MaxMsgSize <= 0 || Ndev.SNMPparameters.MaxMsgSize > SNMP_MAXMSGSIZE {
+		Session.SNMPparams.MaxMsgSize = SNMP_DEFAULTMSGSITE
+	} else {
+		Session.SNMPparams.MaxMsgSize = Ndev.SNMPparameters.MaxMsgSize
+	}
+
 	Session.SNMPparams.AuthKey = Ndev.SNMPparameters.AuthKey
 	Session.SNMPparams.PrivKey = Ndev.SNMPparameters.PrivKey
 	Session.SNMPparams.MessageIDv2 = rand.Int31()
@@ -207,7 +213,7 @@ func (SNMPparameters *SNMPv3Session) makeMessage(oidValue []SNMP_Packet_V2_VarBi
 	SNMP_GlobalData.MsgFlag[0] = byte(atomic.LoadUint32(&SNMPparameters.SNMPparams.DataFlag))
 	SNMP_GlobalData.MsgSecurityModel = msgSecurityModel_USM
 	SNMP_GlobalData.MsgID = atomic.LoadInt32(&SNMPparameters.SNMPparams.MessageId)
-	SNMP_GlobalData.MsgMaxSize = 1360
+	SNMP_GlobalData.MsgMaxSize = SNMPparameters.SNMPparams.MaxMsgSize
 	GlobalData, GlobalDataError := ASNber.Marshal(SNMP_GlobalData)
 	if GlobalDataError != nil {
 		return retbytes, GlobalDataError

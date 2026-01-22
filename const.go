@@ -30,6 +30,8 @@ const (
 	SNMP_DEFAULTRETRY             = 3
 	SNMP_MAXREPETITION     uint16 = 80
 	SNMP_DEFAULTREPETITION uint16 = 25
+	SNMP_MAXMSGSIZE        uint16 = 65535
+	SNMP_DEFAULTMSGSITE    uint16 = 1360
 
 	// SNMPv2 Exception Tags (ContextSpecific)
 	TAGERR_noSuchObect    = 0
