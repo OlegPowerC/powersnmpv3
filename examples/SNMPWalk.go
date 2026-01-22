@@ -43,7 +43,8 @@ func main() {
 	RouterDev.SNMPparameters.PrivKey = *SNMPprivPassword
 	RouterDev.SNMPparameters.ContextName = *SNMPv3Context
 	RouterDev.SNMPparameters.RetryCount = 5
-	RouterDev.SNMPparameters.TimeoutBtwRepeat = 300
+	RouterDev.SNMPparameters.MaxRepetitions = 50
+	RouterDev.SNMPparameters.TimeoutBtwRepeat = 800
 	RouterDev.DebugLevel = uint8(*DebugLevel)
 
 	Ssess, SsessError := PowerSNMP.SNMP_Init(RouterDev)
