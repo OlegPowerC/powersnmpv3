@@ -2,6 +2,7 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/OlegPowerC/powersnmpv3)](https://goreportcard.com/report/github.com/OlegPowerC/powersnmpv3)
 [![GoDoc](https://godoc.org/github.com/OlegPowerC/powersnmpv3?status.svg)](https://godoc.org/github.com/OlegPowerC/powersnmpv3)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)  
+[![Performance](https://img.shields.io/badge/Performance-Fastest_SNMP_Library-brightgreen)]()
 
 **Pure Go SNMP v2c/v3 Library**
 
