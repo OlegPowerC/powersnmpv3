@@ -520,28 +520,34 @@ func receiverV3parser(SNMPparameters *SNMPv3Session, udppayload []byte, checkmsg
 			}
 		}
 		if pdu1.ErrorStatusRaw != sNMP_ErrNoError {
-			failedOID := []int{}
+			var failedOID []int
+			//Скопируем проблемный OID
 			if pdu1.ErrorIndexRaw > 0 {
 				if int(pdu1.ErrorIndexRaw-1) < len(pdu1.VarBinds) {
 					failedOID = pdu1.VarBinds[pdu1.ErrorIndexRaw-1].RSnmpOID
 				}
 			}
-
-			umerr = SNMPfe_Errors{ErrorStatusRaw: pdu1.ErrorStatusRaw, ErrorIndexRaw: pdu1.ErrorIndexRaw, FailedOID: failedOID}
-			//fmt.Errorf("SNMPv2 Error: %s,Error index: %d", SNMPErrorIntToText(int(pdu1.ErrorStatusRaw)), pdu1.ErrorIndexRaw)
-			return ReturnSNMPpacker, umerr
+			switch pdu1.ErrorStatusRaw {
+			case sNMP_ErrResponseTooLarge:
+				partialerr.Failedoids = append(partialerr.Failedoids, PowerSNMPv3_Errors_FailedOids_Error{failedOID, int(pdu1.ErrorStatusRaw)})
+			case sNMP_ErrGeneralError:
+				partialerr.Failedoids = append(partialerr.Failedoids, PowerSNMPv3_Errors_FailedOids_Error{failedOID, int(pdu1.ErrorStatusRaw)})
+			default:
+				umerr = SNMPfe_Errors{ErrorStatusRaw: pdu1.ErrorStatusRaw, ErrorIndexRaw: pdu1.ErrorIndexRaw, FailedOID: failedOID}
+				return ReturnSNMPpacker, umerr
+			}
 		}
-		//OID с VarBind в результат не добавляем, а добавляем в ошибочные
+		//OID с ошибкой в VarBind в результат не добавляем, а добавляем в ошибочные
 		for _, oidv := range pdu1.VarBinds {
 			if oidv.RSnmpVar.Class == ASNber.ClassContextSpecific && len(oidv.RSnmpVar.FullBytes) == 2 && oidv.RSnmpVar.IsCompound == false {
 				switch oidv.RSnmpVar.Tag {
-				case 0x00:
+				case TAGERR_noSuchObect:
 					partialerr.Failedoids = append(partialerr.Failedoids, PowerSNMPv3_Errors_FailedOids_Error{oidv.RSnmpOID, oidv.RSnmpVar.Tag})
 					continue
-				case 0x01:
+				case TAGERR_noSuchInstance:
 					partialerr.Failedoids = append(partialerr.Failedoids, PowerSNMPv3_Errors_FailedOids_Error{oidv.RSnmpOID, oidv.RSnmpVar.Tag})
 					continue
-				case 0x02:
+				case TAGERR_EndOfMib:
 					partialerr.Failedoids = append(partialerr.Failedoids, PowerSNMPv3_Errors_FailedOids_Error{oidv.RSnmpOID, oidv.RSnmpVar.Tag})
 					continue
 				default:

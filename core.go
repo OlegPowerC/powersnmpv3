@@ -694,10 +694,11 @@ func (SNMPparameters *SNMPv3Session) snmpv3_Walk_WChan(Oid []int, ReqType int, C
 	OidVarConverted := []SNMP_Packet_V2_Decoded_VarBind{{Oid, SNMPvbNullValue}}
 	for a := 0; a < SNMP_MAXIMUMWALK; a++ {
 		Data, Err := SNMPparameters.snmpv3_GetSet(OidVarConverted, ReqType)
+		var SNMPud_Err SNMPud_Errors
+		var CommonError error
 		partialErrSend, needClose := false, false
 		if Err != nil {
-			var SNMPud_Err SNMPud_Errors
-			var CommonError error
+
 			SNMPud_Err, CommonError = ParseError(Err)
 			if SNMPud_Err.IsFatal || CommonError != nil {
 				//Фатальные ошибки, сразу выходим
@@ -738,7 +739,13 @@ func (SNMPparameters *SNMPv3Session) snmpv3_Walk_WChan(Oid []int, ReqType int, C
 			ChanData.ValidData = false
 			ChanData.Error = Err
 			CData <- ChanData
-			needClose = true
+			if SNMPud_Err.Oids != nil {
+				for _, vd := range SNMPud_Err.Oids {
+					if vd.Error_id == TAGERR_EndOfMib {
+						needClose = true
+					}
+				}
+			}
 		}
 
 		if needClose {
