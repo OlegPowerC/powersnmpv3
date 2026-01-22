@@ -876,13 +876,13 @@ ok      github.com/OlegPowerC/powersnmpv3       2.273s
 
 Benchmarked on 15,381 OIDs (SNMPv3 AES128+SHA, 1Gbps network, Cisco S8000v target):
 
-| Implementation | Time | Throughput | Memory |
-|----------------|------|------------|--------|
-| **PowerSNMP (Channel)** ⭐ | **4.02s** | **3,827 OID/s** | 12.4 MB |
-| PowerSNMP (Callback) | 4.46s | 3,449 OID/s | **8.8 MB** |
-| gosnmp | 4.43s | 3,472 OID/s | 10.0 MB |
-| net-snmp (C) | 6.43s | 2,393 OID/s | 8.8 MB |
-| snmp4j (Java) | 8.27s | 1,860 OID/s | 145.6 MB |
+| Implementation                 | Time        | Throughput      | Memory     |
+|--------------------------------|-------------|-----------------|------------|
+| **PowerSNMPv3 (Channel)** ⭐   | **4.02s**   | **3,827 OID/s** | 12.4 MB    |
+| PowerSNMPv3 (Callback)         | 4.46s       | 3,449 OID/s     | **8.8 MB** |
+| gosnmp                         | 4.43s       | 3,472 OID/s     | 10.0 MB    |
+| net-snmp (C)                   | 6.43s       | 2,393 OID/s     | 8.8 MB     |
+| snmp4j (Java)                  | 8.27s       | 1,860 OID/s     | 145.6 MB   |
 
 **PowerSNMP is 37% faster than net-snmp and uses 12x less memory than snmp4j.**
 
