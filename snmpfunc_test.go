@@ -93,7 +93,7 @@ func TestSNMPv3Session_SNMP_Get_Set_Walk(t *testing.T) {
 		t.Log(fmt.Println(Convert_OID_IntArrayToString_RAW(wl.RSnmpOID), "=", Convert_Variable_To_String(wl.RSnmpVar), ":", Convert_ClassTag_to_String(wl.RSnmpVar)))
 		location := Convert_Variable_To_String(wl.RSnmpVar)
 		if Convert_Variable_To_String(wl.RSnmpVar) != "Test location from V2" {
-			t.Logf("ℹ️ V3 sees: '%s' (V2 SET может иметь разные ACL)", location)
+			t.Logf("V3 sees: '%s' (V2 SET может иметь разные ACL)", location)
 		} else {
 			t.Logf("V2→V3 VERIFICATION PASS! '%s'", location)
 		}
@@ -148,4 +148,53 @@ func TestSNMPv3Session_SNMP_Get_Set_Walk(t *testing.T) {
 	if Close3Err != nil {
 		t.Errorf("SNMP v3  Error in Close: %s", Close3Err.Error())
 	}
+
+	Nhost.SNMPparameters.SNMPversion = 2
+	Ssess, SsessError = SNMP_Init(Nhost)
+	if SsessError != nil {
+		t.Errorf("Error in SNMPInit: %v", SsessError.Error())
+	}
+	if Ssess == nil {
+		t.Fatal("Error in SNMPInit")
+	}
+
+	WalkResv2, verr3wv2 := Ssess.SNMP_Walk(IoidW)
+	if verr3wv2 != nil {
+		t.Errorf("SNMP v3 Error in SNMP_Walk: %s", verr3w.Error())
+	}
+
+	if WalkResv2 == nil {
+		t.Errorf("Error in SNMP_Walk, result is nul")
+	}
+
+	if len(WalkResv2) == 0 {
+		t.Errorf("Error in SNMP_Walk, expected > 0 VarBinds but got %d", len(WalkResv2))
+	}
+
+	for _, wlv2 := range WalkResv2 {
+		t.Log(fmt.Println(Convert_OID_IntArrayToString_RAW(wlv2.RSnmpOID), "=", Convert_Variable_To_String(wlv2.RSnmpVar), ":", Convert_ClassTag_to_String(wlv2.RSnmpVar)))
+	}
+
+	WalkResv2, verr3wv2 = Ssess.SNMP_BulkWalk(IoidW)
+	if verr3bw != nil {
+		t.Errorf("SNMP v3 Error in SNMP_BulkWalk: %s", verr3bw.Error())
+	}
+
+	if BWalkRes == nil {
+		t.Errorf("Error in SNMP_BulkWalk, result is nul")
+	}
+
+	if len(BWalkRes) == 0 {
+		t.Errorf("Error in SNMP_BulkWalk, expected > 0 VarBinds but got %d", len(BWalkRes))
+	}
+
+	for _, wlv2 := range BWalkRes {
+		t.Log(fmt.Println(Convert_OID_IntArrayToString_RAW(wlv2.RSnmpOID), "=", Convert_Variable_To_String(wlv2.RSnmpVar), ":", Convert_ClassTag_to_String(wlv2.RSnmpVar)))
+	}
+
+	Close3Errv2 := Ssess.Close()
+	if Close3Errv2 != nil {
+		t.Errorf("SNMP v3  Error in Close: %s", Close3Errv2.Error())
+	}
+
 }

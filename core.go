@@ -477,7 +477,7 @@ func (SNMPparameters *SNMPv3Session) snmpv3_GetSet(oidValue []SNMP_Packet_V2_Dec
 	nonRepeaters, maxRepetitions := int32(0), int32(0)
 	if Request_Type == SNMPv2_REQUEST_GETBULK {
 		nonRepeaters = 0
-		maxRepetitions = 25
+		maxRepetitions = SNMPparameters.SNMPparams.MaxRepetitions
 	}
 
 	defer func() {

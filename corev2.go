@@ -73,35 +73,62 @@ func (SNMPparameters *SNMPv3Session) snmpv2_Walk_WChan(Oid []int, ReqType int, C
 	var ChanData ChanDataWErr
 	OidVarConverted := []SNMP_Packet_V2_Decoded_VarBind{{Oid, SNMPvbNullValue}}
 	for a := 0; a < SNMP_MAXIMUMWALK; a++ {
-		SNMPGet, SNMPGetErr := SNMPparameters.snmpv2_GetSet(OidVarConverted, ReqType)
-		if SNMPGetErr != nil {
-			ChanData.Error = SNMPGetErr
-			CData <- ChanData
-			close(CData)
-			return
+		Data, Err := SNMPparameters.snmpv2_GetSet(OidVarConverted, ReqType)
+		partialErrSend, needClose := false, false
+		if Err != nil {
+			var SNMPud_Err SNMPud_Errors
+			var CommonError error
+			SNMPud_Err, CommonError = ParseError(Err)
+			if SNMPud_Err.IsFatal || CommonError != nil {
+				//Фатальные ошибки, сразу выходим
+				ChanData.Data = SNMP_Packet_V2_Decoded_VarBind{}
+				ChanData.Error = Err
+				ChanData.ValidData = false
+				CData <- ChanData
+				close(CData)
+				return
+			}
+			partialErrSend = true
 		}
 		//Обходим результат и проверяем не вышли ли из ветки
-		for _, val := range SNMPGet {
+		for _, val := range Data {
 			//Проверяем не зациклились ли
-			if len(Oid) == len(val.RSnmpOID) && slices.Equal(Oid, val.RSnmpOID) {
-				ChanData.Data = val
+			if slices.Equal(OidVarConverted[0].RSnmpOID, val.RSnmpOID) {
+				//Если да то выйдем с ошибкой, данные не отправляем - это повтор
+				ChanData.Data = SNMP_Packet_V2_Decoded_VarBind{}
 				ChanData.Error = fmt.Errorf("OID is not increased")
+				ChanData.ValidData = false
 				CData <- ChanData
 				close(CData)
 				return
 			}
 			if InSubTreeCheck(Oid, val.RSnmpOID) == false {
-				close(CData)
-				return
+				needClose = true
+				break
 			} else {
 				ChanData.Data = val
 				ChanData.Error = nil
+				ChanData.ValidData = true
 				CData <- ChanData
 			}
 		}
 
-		if len(SNMPGet) > 0 {
-			OidVarConverted[0].RSnmpOID = SNMPGet[len(SNMPGet)-1].RSnmpOID
+		if partialErrSend {
+			ChanData.Data = SNMP_Packet_V2_Decoded_VarBind{}
+			ChanData.ValidData = false
+			ChanData.Error = Err
+			CData <- ChanData
+			needClose = true
+		}
+
+		if needClose {
+			close(CData)
+			return
+		}
+
+		//Продолжаем Walk
+		if len(Data) > 0 {
+			OidVarConverted[0].RSnmpOID = Data[len(Data)-1].RSnmpOID
 		} else {
 			close(CData)
 			return
@@ -122,22 +149,37 @@ func (SNMPparameters *SNMPv3Session) snmpv2_Walk(Oid []int, ReqType int) (SNMPDa
 	var RetVar []SNMP_Packet_V2_Decoded_VarBind
 	for a := 0; a < SNMP_MAXIMUMWALK; a++ {
 		SNMPGet, SNMPGetErr := SNMPparameters.snmpv2_GetSet(OidVarConverted, ReqType)
+		partialErr := false
 		if SNMPGetErr != nil {
-			return RetVar, SNMPGetErr
+			var SNMPud_Err SNMPud_Errors
+			var CommonError error
+			SNMPud_Err, CommonError = ParseError(SNMPGetErr)
+			if SNMPud_Err.IsFatal || CommonError != nil {
+				//Фатальные ошибки, сразу выходим
+				return RetVar, SNMPGetErr
+			}
+			partialErr = true
 		}
 		//Обходим результат и проверяем не вышли ли из ветки
 		for _, val := range SNMPGet {
 			//Проверяем не зациклились ли
-			if slices.Equal(Oid, val.RSnmpOID) {
+			if slices.Equal(OidVarConverted[0].RSnmpOID, val.RSnmpOID) {
 				reterr := fmt.Errorf("OID is not increased")
 				return RetVar, reterr
 			}
 			if InSubTreeCheck(Oid, val.RSnmpOID) == false {
+				//Выши за пределы ветки
 				return RetVar, nil
 			} else {
+				//Нормальная ситуация, добавим данные
 				RetVar = append(RetVar, val)
 			}
 		}
+
+		if partialErr {
+			return RetVar, SNMPGetErr
+		}
+
 		if len(SNMPGet) > 0 {
 			OidVarConverted[0].RSnmpOID = SNMPGet[len(SNMPGet)-1].RSnmpOID
 		} else {
@@ -195,7 +237,7 @@ func (SNMPparameters *SNMPv3Session) snmpv2_GetSet(oidValue []SNMP_Packet_V2_Dec
 	nonRepeaters, maxRepetitions := int32(0), int32(0)
 	if Request_Type == SNMPv2_REQUEST_GETBULK {
 		nonRepeaters = 0
-		maxRepetitions = 25
+		maxRepetitions = SNMPparameters.SNMPparams.MaxRepetitions
 	}
 
 	defer func() {
