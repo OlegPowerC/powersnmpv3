@@ -135,7 +135,7 @@ type PowerSNMPv3_Errors_FailedOids_Error struct {
 
 type SNMPv3_GlobalData struct {
 	MsgID            int32
-	MsgMaxSize       uint16
+	MsgMaxSize       int
 	MsgFlag          []byte
 	MsgSecurityModel int
 }

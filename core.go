@@ -213,7 +213,7 @@ func (SNMPparameters *SNMPv3Session) makeMessage(oidValue []SNMP_Packet_V2_VarBi
 	SNMP_GlobalData.MsgFlag[0] = byte(atomic.LoadUint32(&SNMPparameters.SNMPparams.DataFlag))
 	SNMP_GlobalData.MsgSecurityModel = msgSecurityModel_USM
 	SNMP_GlobalData.MsgID = atomic.LoadInt32(&SNMPparameters.SNMPparams.MessageId)
-	SNMP_GlobalData.MsgMaxSize = SNMPparameters.SNMPparams.MaxMsgSize
+	SNMP_GlobalData.MsgMaxSize = int(SNMPparameters.SNMPparams.MaxMsgSize)
 	GlobalData, GlobalDataError := ASNber.Marshal(SNMP_GlobalData)
 	if GlobalDataError != nil {
 		return retbytes, GlobalDataError
