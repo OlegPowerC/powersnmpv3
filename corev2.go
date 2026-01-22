@@ -138,6 +138,69 @@ func (SNMPparameters *SNMPv3Session) snmpv2_Walk_WChan(Oid []int, ReqType int, C
 	return
 }
 
+func (SNMPparameters *SNMPv3Session) snmpv2_Walk_WCallback(Oid []int, ReqType int, callback func(ChanDataWErr)) {
+	var ChanData ChanDataWErr
+	OidVarConverted := []SNMP_Packet_V2_Decoded_VarBind{{Oid, SNMPvbNullValue}}
+	for a := 0; a < SNMP_MAXIMUMWALK; a++ {
+		Data, Err := SNMPparameters.snmpv2_GetSet(OidVarConverted, ReqType)
+		partialErrSend, needClose := false, false
+		if Err != nil {
+			var SNMPud_Err SNMPud_Errors
+			var CommonError error
+			SNMPud_Err, CommonError = ParseError(Err)
+			if SNMPud_Err.IsFatal || CommonError != nil {
+				//Фатальные ошибки, сразу выходим
+				ChanData.Data = SNMP_Packet_V2_Decoded_VarBind{}
+				ChanData.Error = Err
+				ChanData.ValidData = false
+				callback(ChanData)
+				return
+			}
+			partialErrSend = true
+		}
+		//Обходим результат и проверяем не вышли ли из ветки
+		for _, val := range Data {
+			//Проверяем не зациклились ли
+			if slices.Equal(OidVarConverted[0].RSnmpOID, val.RSnmpOID) {
+				//Если да то выйдем с ошибкой, данные не отправляем - это повтор
+				ChanData.Data = SNMP_Packet_V2_Decoded_VarBind{}
+				ChanData.Error = fmt.Errorf("OID is not increased")
+				ChanData.ValidData = false
+				callback(ChanData)
+				return
+			}
+			if InSubTreeCheck(Oid, val.RSnmpOID) == false {
+				needClose = true
+				break
+			} else {
+				ChanData.Data = val
+				ChanData.Error = nil
+				ChanData.ValidData = true
+				callback(ChanData)
+			}
+		}
+
+		if partialErrSend {
+			ChanData.Data = SNMP_Packet_V2_Decoded_VarBind{}
+			ChanData.ValidData = false
+			ChanData.Error = Err
+			callback(ChanData)
+			needClose = true
+		}
+
+		if needClose {
+			return
+		}
+
+		//Продолжаем Walk
+		if len(Data) > 0 {
+			OidVarConverted[0].RSnmpOID = Data[len(Data)-1].RSnmpOID
+		} else {
+			return
+		}
+	}
+}
+
 // snmpv2_Walk performs complete SNMPv2c GetNext walk of MIB subtree.
 //
 // Identical to SNMPv3_Walk but uses snmpv2_GetSet (Community authentication).

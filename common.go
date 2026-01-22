@@ -748,6 +748,18 @@ func (SNMPparameters *SNMPv3Session) SNMP_Walk_WChan(oid []int, CData chan<- Cha
 	return
 }
 
+func (SNMPparameters *SNMPv3Session) SNMP_Walk_WCallback(oid []int, callback func(ChanDataWErr)) {
+	switch SNMPparameters.SNMPparams.SNMPversion {
+	case 3:
+		SNMPparameters.snmpv3_Walk_WCallback(oid, SNMPv2_REQUEST_GETNEXT, callback)
+	case 2:
+		SNMPparameters.snmpv2_Walk_WCallback(oid, SNMPv2_REQUEST_GETNEXT, callback)
+	default:
+		callback(ChanDataWErr{Error: errors.New("unsupported SNMP version")})
+	}
+	return
+}
+
 // SNMP_BulkWalk_WChan performs high-performance SNMP BULK WALK with streaming via channel.
 //
 // Concurrent lexicographic traversal using SNMPv2_GETBULK PDUs (RFC3416 §4.2.3).
@@ -835,6 +847,18 @@ func (SNMPparameters *SNMPv3Session) SNMP_BulkWalk_WChan(oid []int, CData chan<-
 	default:
 		CData <- ChanDataWErr{Error: errors.New("unsupported SNMP version")}
 		close(CData)
+	}
+	return
+}
+
+func (SNMPparameters *SNMPv3Session) SNMP_BulkWalk_WCallback(oid []int, callback func(ChanDataWErr)) {
+	switch SNMPparameters.SNMPparams.SNMPversion {
+	case 3:
+		SNMPparameters.snmpv3_Walk_WCallback(oid, SNMPv2_REQUEST_GETBULK, callback)
+	case 2:
+		SNMPparameters.snmpv2_Walk_WCallback(oid, SNMPv2_REQUEST_GETBULK, callback)
+	default:
+		callback(ChanDataWErr{Error: errors.New("unsupported SNMP version")})
 	}
 	return
 }
