@@ -1200,7 +1200,7 @@ func CheckUserParams(ndev NetworkDevice) error {
 	}
 	if len(ndev.SNMPparameters.PrivProtocol) >= 3 {
 		privph := strings.ToLower(strings.TrimSpace(ndev.SNMPparameters.PrivProtocol))
-		if privph != "des" && privph != "aes" && privph != "aes192" && privph != "aes256" {
+		if privph != "des" && privph != "aes" && privph != "aes192" && privph != "aes256" && privph != "aes192a" && privph != "aes256a" {
 			return fmt.Errorf("unsupported priv protocol: %s", ndev.SNMPparameters.PrivProtocol)
 		}
 		privprotoexist = true
