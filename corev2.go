@@ -6,6 +6,7 @@
 package PowerSNMPv3
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net"
@@ -69,10 +70,23 @@ func (SNMPparameters *SNMPv3Session) makeSNMPPv2Packet(oidValue []SNMP_Packet_V2
 // Non-blocking streaming for large MIB tables.
 //
 // Usage identical to SNMPv3_Walk_WChan.
-func (SNMPparameters *SNMPv3Session) snmpv2_Walk_WChan(Oid []int, ReqType int, CData chan<- ChanDataWErr) {
+func (SNMPparameters *SNMPv3Session) snmpv2_Walk_WChan(ctx context.Context, Oid []int, ReqType int, CData chan<- ChanDataWErr) {
 	var ChanData ChanDataWErr
 	OidVarConverted := []SNMP_Packet_V2_Decoded_VarBind{{Oid, SNMPvbNullValue}}
+	defer close(CData)
 	for a := 0; a < SNMP_MAXIMUMWALK; a++ {
+		select {
+		case <-ctx.Done():
+			ChanData.Data = SNMP_Packet_V2_Decoded_VarBind{}
+			ChanData.ValidData = false
+			ChanData.Error = ctx.Err()
+			select {
+			case CData <- ChanData:
+			default:
+			}
+			return
+		default:
+		}
 		Data, Err := SNMPparameters.snmpv2_GetSet(OidVarConverted, ReqType)
 		partialErrSend, needClose := false, false
 		if Err != nil {
@@ -84,8 +98,11 @@ func (SNMPparameters *SNMPv3Session) snmpv2_Walk_WChan(Oid []int, ReqType int, C
 				ChanData.Data = SNMP_Packet_V2_Decoded_VarBind{}
 				ChanData.Error = Err
 				ChanData.ValidData = false
-				CData <- ChanData
-				close(CData)
+				select {
+				case <-ctx.Done():
+					return
+				case CData <- ChanData:
+				}
 				return
 			}
 			partialErrSend = true
@@ -98,8 +115,11 @@ func (SNMPparameters *SNMPv3Session) snmpv2_Walk_WChan(Oid []int, ReqType int, C
 				ChanData.Data = SNMP_Packet_V2_Decoded_VarBind{}
 				ChanData.Error = fmt.Errorf("OID is not increased")
 				ChanData.ValidData = false
-				CData <- ChanData
-				close(CData)
+				select {
+				case <-ctx.Done():
+					return
+				case CData <- ChanData:
+				}
 				return
 			}
 			if InSubTreeCheck(Oid, val.RSnmpOID) == false {
@@ -109,7 +129,11 @@ func (SNMPparameters *SNMPv3Session) snmpv2_Walk_WChan(Oid []int, ReqType int, C
 				ChanData.Data = val
 				ChanData.Error = nil
 				ChanData.ValidData = true
-				CData <- ChanData
+				select {
+				case <-ctx.Done():
+					return
+				case CData <- ChanData:
+				}
 			}
 		}
 
@@ -117,12 +141,15 @@ func (SNMPparameters *SNMPv3Session) snmpv2_Walk_WChan(Oid []int, ReqType int, C
 			ChanData.Data = SNMP_Packet_V2_Decoded_VarBind{}
 			ChanData.ValidData = false
 			ChanData.Error = Err
-			CData <- ChanData
+			select {
+			case <-ctx.Done():
+				return
+			case CData <- ChanData:
+			}
 			needClose = true
 		}
 
 		if needClose {
-			close(CData)
 			return
 		}
 
@@ -130,11 +157,9 @@ func (SNMPparameters *SNMPv3Session) snmpv2_Walk_WChan(Oid []int, ReqType int, C
 		if len(Data) > 0 {
 			OidVarConverted[0].RSnmpOID = Data[len(Data)-1].RSnmpOID
 		} else {
-			close(CData)
 			return
 		}
 	}
-	close(CData)
 	return
 }
 
