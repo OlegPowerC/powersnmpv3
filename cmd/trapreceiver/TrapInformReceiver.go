@@ -164,6 +164,6 @@ func main() {
 	defer conn.Close()
 	wg.Add(1)
 	go RecPacket(conn, Userv3Map, &wg)
-	fmt.Println("\nPress Ctrl+C to stop\n")
+	fmt.Println("Press Ctrl+C to stop")
 	wg.Wait()
 }
