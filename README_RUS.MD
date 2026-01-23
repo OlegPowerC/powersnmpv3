@@ -70,7 +70,7 @@ func main() {
     defer sess.Close()
 
     // sysDescr.0
-    oid, _ := snmp.Convert_OID_StringToIntArray_RAW("1.3.6.1.2.1.1.1.0")
+    oid, _ := snmp.ParseOID("1.3.6.1.2.1.1.1.0")
     result, err := sess.SNMP_Get(oid)
     if err != nil {
         log.Fatal(err)
@@ -255,7 +255,7 @@ func (s *SNMPv3Session) SNMP_Get(Oid []int) ([]SNMP_Packet_V2_Decoded_VarBind, e
 ```
 
 **Параметры:**
-- `Oid` - OID как массив int (используйте `Convert_OID_StringToIntArray_RAW`)
+- `Oid` - OID как массив int (используйте `ParseOID`)
 
 **Возвращает:**
 - `[]SNMP_Packet_V2_Decoded_VarBind` - массив с одним результатом
@@ -263,7 +263,7 @@ func (s *SNMPv3Session) SNMP_Get(Oid []int) ([]SNMP_Packet_V2_Decoded_VarBind, e
 
 **Пример:**
 ```
-oid, _ := snmp.Convert_OID_StringToIntArray_RAW("1.3.6.1.2.1.1.1.0")
+oid, _ := snmp.ParseOID("1.3.6.1.2.1.1.1.0")
 result, err := sess.SNMP_Get(oid)
 ```
 
@@ -310,7 +310,7 @@ func (s *SNMPv3Session) SNMP_Walk(oid []int) ([]SNMP_Packet_V2_Decoded_VarBind, 
 **Пример:**
 ```
 // Walk ifDescr (1.3.6.1.2.1.2.2.1.2)
-oid, _ := snmp.Convert_OID_StringToIntArray_RAW("1.3.6.1.2.1.2.2.1.2")
+oid, _ := snmp.ParseOID("1.3.6.1.2.1.2.2.1.2")
 interfaces, err := sess.SNMP_Walk(oid)
 for _, iface := range interfaces {
     fmt.Println(snmp.Convert_Variable_To_String(iface.RSnmpVar))
@@ -389,7 +389,7 @@ func (s *SNMPv3Session) SNMP_Set(Oid []int, VBvalue SNMPVar) ([]SNMP_Packet_V2_D
 
 **Пример:**
 ```
-oid, _ := snmp.Convert_OID_StringToIntArray_RAW("1.3.6.1.2.1.1.6.0") // sysLocation
+oid, _ := snmp.ParseOID("1.3.6.1.2.1.1.6.0") // sysLocation
 value := snmp.SetSNMPVar_OctetString("Server Room A1")
 result, err := sess.SNMP_Set(oid, value)
 ```
@@ -448,18 +448,18 @@ oid, err := snmp.Convert_OID_StringToIntArray("1.3.6.1.2.1.1.1.0")
 // oid = []int{43, 6, 1, 2, 1, 1, 1, 0} (BER encoded)
 ```
 
-#### Convert_OID_StringToIntArray_RAW
+#### ParseOID
 
 Конвертирует строку OID в "сырой" массив int (без BER кодирования).  
 Она используется для конвертации строкорого OID в []int для передачи функциям Ge/Set/Walk
 
 ```
-func Convert_OID_StringToIntArray_RAW(OIDStr string) ([]int, error)
+func ParseOID(OIDStr string) ([]int, error)
 ```
 
 **Пример:**
 ```
-oid, err := snmp.Convert_OID_StringToIntArray_RAW("1.3.6.1.2.1.1.1.0")
+oid, err := snmp.ParseOID("1.3.6.1.2.1.1.1.0")
 // oid = []int{1, 3, 6, 1, 2, 1, 1, 1, 0}
 ```
 

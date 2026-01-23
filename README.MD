@@ -70,7 +70,7 @@ func main() {
     defer sess.Close()
 
     // sysDescr.0
-    oid, _ := snmp.Convert_OID_StringToIntArray_RAW("1.3.6.1.2.1.1.1.0")
+    oid, _ := snmp.ParseOID("1.3.6.1.2.1.1.1.0")
     result, err := sess.SNMP_Get(oid)
     if err != nil {
         log.Fatal(err)
@@ -255,7 +255,7 @@ func (s *SNMPv3Session) SNMP_Get(Oid []int) ([]SNMP_Packet_V2_Decoded_VarBind, e
 ```
 
 **Parameters:**
-- `Oid` - OID as int array (use `Convert_OID_StringToIntArray_RAW`)
+- `Oid` - OID as int array (use `ParseOID`)
 
 **Returns:**
 - `[]SNMP_Packet_V2_Decoded_VarBind` - array with single result
@@ -263,7 +263,7 @@ func (s *SNMPv3Session) SNMP_Get(Oid []int) ([]SNMP_Packet_V2_Decoded_VarBind, e
 
 **Example:**
 ```
-oid, _ := snmp.Convert_OID_StringToIntArray_RAW("1.3.6.1.2.1.1.1.0")
+oid, _ := snmp.ParseOID("1.3.6.1.2.1.1.1.0")
 result, err := sess.SNMP_Get(oid)
 ```
 
@@ -310,7 +310,7 @@ func (s *SNMPv3Session) SNMP_Walk(oid []int) ([]SNMP_Packet_V2_Decoded_VarBind, 
 **Example:**
 ```
 // Walk ifDescr (1.3.6.1.2.1.2.2.1.2)
-oid, _ := snmp.Convert_OID_StringToIntArray_RAW("1.3.6.1.2.1.2.2.1.2")
+oid, _ := snmp.ParseOID("1.3.6.1.2.1.2.2.1.2")
 interfaces, err := sess.SNMP_Walk(oid)
 for _, iface := range interfaces {
     fmt.Println(snmp.Convert_Variable_To_String(iface.RSnmpVar))
@@ -389,7 +389,7 @@ func (s *SNMPv3Session) SNMP_Set(Oid []int, VBvalue SNMPVar) ([]SNMP_Packet_V2_D
 
 **Example:**
 ```
-oid, _ := snmp.Convert_OID_StringToIntArray_RAW("1.3.6.1.2.1.1.6.0") // sysLocation
+oid, _ := snmp.ParseOID("1.3.6.1.2.1.1.6.0") // sysLocation
 value := snmp.SetSNMPVar_OctetString("Server Room A1")
 result, err := sess.SNMP_Set(oid, value)
 ```
@@ -448,18 +448,18 @@ oid, err := snmp.Convert_OID_StringToIntArray("1.3.6.1.2.1.1.1.0")
 // oid = []int{43, 6, 1, 2, 1, 1, 1, 0} (BER encoded)
 ```
 
-#### Convert_OID_StringToIntArray_RAW
+#### ParseOID
 
 Converts OID string to "raw" int array (without BER encoding).
 Use for convert string OID to []int for us in the Get/Set/Walk function
 
 ```
-func Convert_OID_StringToIntArray_RAW(OIDStr string) ([]int, error)
+func ParseOID(OIDStr string) ([]int, error)
 ```
 
 **Example:**
 ```
-oid, err := snmp.Convert_OID_StringToIntArray_RAW("1.3.6.1.2.1.1.1.0")
+oid, err := snmp.ParseOID("1.3.6.1.2.1.1.1.0")
 // oid = []int{1, 3, 6, 1, 2, 1, 1, 1, 0}
 ```
 
