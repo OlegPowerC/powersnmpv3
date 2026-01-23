@@ -349,22 +349,26 @@ func (SNMPparameters *SNMPv3Session) sendSnmpv2GetRequestPrototype(oidValue []SN
 	}
 
 	p := make([]byte, SNMP_BUFFERSIZE)
-	Tmms := time.Duration(SNMPparameters.SNMPparams.TimeoutBtwRepeat) * time.Millisecond
 
 	//Делаем несколько попыток получения данных
 	writedn := 0
 	SendRequest := true
 	for itertry := 0; itertry < SNMPparameters.SNMPparams.RetryCount; itertry++ {
 		//Установим таймаут на чтение
+		//Установим таймаут на чтение
 		TMread := time.Duration(SNMPparameters.SNMPparams.TimeoutBtwRepeat*(itertry+1)) * time.Millisecond
-		errread = SNMPparameters.conn.SetReadDeadline(time.Now().Add(TMread))
+		rdeadLine := time.Now().Add(TMread)
+		errread = SNMPparameters.conn.SetReadDeadline(rdeadLine)
 		if errread != nil {
 			continue
 		}
 
 		//Нужно послать запрос
 		if SendRequest {
-			errread = SNMPparameters.conn.SetWriteDeadline(time.Now().Add(Tmms))
+			//Таймаут на запись данных
+			TMwrite := time.Duration(SNMPparameters.SNMPparams.TimeoutBtwRepeat) * time.Millisecond
+			wdeadLine := time.Now().Add(TMwrite)
+			errread = SNMPparameters.conn.SetWriteDeadline(wdeadLine)
 			if errread != nil {
 				continue
 			}
@@ -377,37 +381,54 @@ func (SNMPparameters *SNMPv3Session) sendSnmpv2GetRequestPrototype(oidValue []SN
 			SendRequest = false
 		}
 
-		rlen := 0
-		//Ожидаем данные не позднее Текущее время плюс TMs
-		rlen, errread = SNMPparameters.conn.Read(p)
-		if errread == nil {
-			//Пакет получен, разберем его
-			SNMPpackerv2_FP, errread = receiverV2parser(SNMPparameters, p[:rlen], true, LocalRequestId)
-			if errread != nil {
-				if errors.As(errread, &recerr) {
-					if recerr.ErrorStatusCode == PARCE_ERR_WRONGMSGID || recerr.ErrorStatusCode == PARCE_ERR_WRONGREQID {
-						//Принял ответ, но это дубликат или неправильный ID
-						//Просто ждем следующего пакета
-						continue
+		for time.Now().Before(rdeadLine) {
+			//Ожидаем данные не позднее Текущее время плюс TMs
+			rlen, readerr := SNMPparameters.conn.Read(p)
+			if readerr == nil {
+				//Ошибок чтения нет
+				//Пакет получен, разберем его
+				var parcerror error
+				SNMPpackerv2_FP, parcerror = receiverV2parser(SNMPparameters, p[:rlen], true, LocalRequestId)
+				if parcerror != nil {
+					if errors.As(parcerror, &recerr) {
+						if recerr.ErrorStatusCode == PARCE_ERR_WRONGMSGID || recerr.ErrorStatusCode == PARCE_ERR_WRONGREQID {
+							//Принял ответ, но это дубликат или неправильный ID
+							//Просто ждем следующего пакета
+							continue
+						}
+					} else {
+						return SNMPpackerv2_FP, parcerror
+					}
+				}
+				return SNMPpackerv2_FP, parcerror
+			} else {
+				//Ошибка чтения
+				errread = readerr
+				var nerror net.Error
+				if errors.As(errread, &nerror) {
+					//Ошибка как "net.Error"
+					if nerror.Timeout() {
+						//Истек таймаут
+						//установим флаг повторной посылки
+						SendRequest = true
+						//И выход во внешний цикл
+						break
+					} else {
+						//Какая то другая сетевая ошибка
+						return SNMPpackerv2_FP, errread
 					}
 				} else {
+					//не сетевая ошибка
 					return SNMPpackerv2_FP, errread
 				}
 			}
-			break
-		} else {
-			var nerror net.Error
-			if errors.As(errread, &nerror) {
-				//Ошибка как "net.Error"
-				if nerror.Timeout() {
-					//Истек таймаут
-					//установим флаг повторной посылки
-					SendRequest = true
-				}
-			}
-			//Какая-то ошибка чтения, но не истечение таймаута
-			continue
 		}
+		//Внутренний цикл завершен но ошибок нет
+		if errread == nil {
+			errread = fmt.Errorf("timeout waiting for correct SNMP response")
+			SendRequest = true
+		}
+
 	}
 	return SNMPpackerv2_FP, errread
 }
