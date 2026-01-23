@@ -974,7 +974,7 @@ func (SNMPparameters *SNMPv3Session) SNMP_BulkWalk(oid []int) (ReturnValue []SNM
 // | 19   | notInTimeWindow   | Time window validation failed    |
 // | 20   | unsupportedSecLevel | SecurityLevel mismatch         |
 //
-// Usage examples:
+// Usage cmd:
 //
 //	// ParseError() integration
 //	snmpErr, _ := ParseError(err)

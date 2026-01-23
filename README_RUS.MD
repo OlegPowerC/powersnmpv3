@@ -700,17 +700,17 @@ for _, vb := range results {
 
 ```bash
 # SNMPv3 Walk
-go run examples/SNMPWalk.go -h 192.168.1.1 -v 3 \
+go run cmd/SNMPWalk.go -h 192.168.1.1 -v 3 \
     -u snmpuser -a sha -A authpass -x aes -X privpass \
     -o 1.3.6.1.2.1.2.2.1.2
 
 # SNMPv3 BulkWalk
-go run examples/SNMPWalk.go -h 192.168.1.1 -v 3 \
+go run cmd/SNMPWalk.go -h 192.168.1.1 -v 3 \
     -u snmpuser -a sha -A authpass -x aes -X privpass \
     -o 1.3.6.1.2.1.2.2.1.2 -bulk
 
 # SNMPv2c Walk
-go run examples/SNMPWalk.go -h 192.168.1.1 -v 2 -c public \
+go run cmd/SNMPWalk.go -h 192.168.1.1 -v 2 -c public \
     -o 1.3.6.1.2.1.2.2.1.2
 ```
 
