@@ -200,30 +200,37 @@ func receiverV2parser(SNMPparameters *SNMPv3Session, packet []byte, checkmsg_req
 
 	if pdu1.ErrorStatusRaw != sNMP_ErrNoError {
 		failedOID := []int{}
+		//Скопируем проблемный OID
 		if pdu1.ErrorIndexRaw > 0 {
 			if int(pdu1.ErrorIndexRaw-1) < len(pdu1.VarBinds) {
 				failedOID = pdu1.VarBinds[pdu1.ErrorIndexRaw-1].RSnmpOID
 			}
 		}
-		umerr = SNMPfe_Errors{ErrorStatusRaw: pdu1.ErrorStatusRaw, ErrorIndexRaw: pdu1.ErrorIndexRaw, FailedOID: failedOID}
-		//fmt.Errorf("SNMPv2 Error: %s,Error index: %d", SNMPErrorIntToText(int(pdu1.ErrorStatusRaw)), pdu1.ErrorIndexRaw)
-		return RetVar, umerr
+		switch pdu1.ErrorStatusRaw {
+		case sNMP_ErrResponseTooLarge:
+			partialerr.Failedoids = append(partialerr.Failedoids, PowerSNMPv3_Errors_FailedOids_Error{failedOID, int(pdu1.ErrorStatusRaw)})
+		case sNMP_ErrGeneralError, sNMP_ErrNoAccess, sNMP_ErrResourcesUnavailable:
+			partialerr.Failedoids = append(partialerr.Failedoids, PowerSNMPv3_Errors_FailedOids_Error{failedOID, int(pdu1.ErrorStatusRaw)})
+		default:
+			umerr = SNMPfe_Errors{ErrorStatusRaw: pdu1.ErrorStatusRaw, ErrorIndexRaw: pdu1.ErrorIndexRaw, FailedOID: failedOID}
+			return RetVar, umerr
+		}
 	}
 
 	for _, datain := range pdu1.VarBinds {
 		if datain.RSnmpVar.Class == ASNber.ClassContextSpecific && len(datain.RSnmpVar.FullBytes) == 2 && datain.RSnmpVar.IsCompound == false {
 			switch datain.RSnmpVar.Tag {
-			case TAGERR_noSuchObect:
-				partialerr.Failedoids = append(partialerr.Failedoids, PowerSNMPv3_Errors_FailedOids_Error{datain.RSnmpOID, datain.RSnmpVar.Tag})
+			case tagERR_noSuchObject:
+				partialerr.Failedoids = append(partialerr.Failedoids, PowerSNMPv3_Errors_FailedOids_Error{datain.RSnmpOID, tagandclassERR_noSuchObject})
 				continue
-			case TAGERR_noSuchInstance:
-				partialerr.Failedoids = append(partialerr.Failedoids, PowerSNMPv3_Errors_FailedOids_Error{datain.RSnmpOID, datain.RSnmpVar.Tag})
+			case tagERR_noSuchInstance:
+				partialerr.Failedoids = append(partialerr.Failedoids, PowerSNMPv3_Errors_FailedOids_Error{datain.RSnmpOID, tagandclassERR_noSuchInstance})
 				continue
-			case TAGERR_EndOfMib:
-				partialerr.Failedoids = append(partialerr.Failedoids, PowerSNMPv3_Errors_FailedOids_Error{datain.RSnmpOID, datain.RSnmpVar.Tag})
+			case tagERR_EndOfMib:
+				partialerr.Failedoids = append(partialerr.Failedoids, PowerSNMPv3_Errors_FailedOids_Error{datain.RSnmpOID, tagandclassERR_EndOfMib})
 				continue
 			default:
-				umerr = fmt.Errorf("no such... tag is: %d", datain.RSnmpVar.Tag)
+				umerr = fmt.Errorf("no such... tag is: %d", (0x80 | datain.RSnmpVar.Tag))
 			}
 			return RetVar, umerr
 		}
@@ -530,7 +537,7 @@ func receiverV3parser(SNMPparameters *SNMPv3Session, udppayload []byte, checkmsg
 			switch pdu1.ErrorStatusRaw {
 			case sNMP_ErrResponseTooLarge:
 				partialerr.Failedoids = append(partialerr.Failedoids, PowerSNMPv3_Errors_FailedOids_Error{failedOID, int(pdu1.ErrorStatusRaw)})
-			case sNMP_ErrGeneralError:
+			case sNMP_ErrGeneralError, sNMP_ErrNoAccess, sNMP_ErrResourcesUnavailable:
 				partialerr.Failedoids = append(partialerr.Failedoids, PowerSNMPv3_Errors_FailedOids_Error{failedOID, int(pdu1.ErrorStatusRaw)})
 			default:
 				umerr = SNMPfe_Errors{ErrorStatusRaw: pdu1.ErrorStatusRaw, ErrorIndexRaw: pdu1.ErrorIndexRaw, FailedOID: failedOID}
@@ -541,14 +548,14 @@ func receiverV3parser(SNMPparameters *SNMPv3Session, udppayload []byte, checkmsg
 		for _, oidv := range pdu1.VarBinds {
 			if oidv.RSnmpVar.Class == ASNber.ClassContextSpecific && len(oidv.RSnmpVar.FullBytes) == 2 && oidv.RSnmpVar.IsCompound == false {
 				switch oidv.RSnmpVar.Tag {
-				case TAGERR_noSuchObect:
-					partialerr.Failedoids = append(partialerr.Failedoids, PowerSNMPv3_Errors_FailedOids_Error{oidv.RSnmpOID, oidv.RSnmpVar.Tag})
+				case tagERR_noSuchObject:
+					partialerr.Failedoids = append(partialerr.Failedoids, PowerSNMPv3_Errors_FailedOids_Error{oidv.RSnmpOID, tagandclassERR_noSuchObject})
 					continue
-				case TAGERR_noSuchInstance:
-					partialerr.Failedoids = append(partialerr.Failedoids, PowerSNMPv3_Errors_FailedOids_Error{oidv.RSnmpOID, oidv.RSnmpVar.Tag})
+				case tagERR_noSuchInstance:
+					partialerr.Failedoids = append(partialerr.Failedoids, PowerSNMPv3_Errors_FailedOids_Error{oidv.RSnmpOID, tagandclassERR_noSuchInstance})
 					continue
-				case TAGERR_EndOfMib:
-					partialerr.Failedoids = append(partialerr.Failedoids, PowerSNMPv3_Errors_FailedOids_Error{oidv.RSnmpOID, oidv.RSnmpVar.Tag})
+				case tagERR_EndOfMib:
+					partialerr.Failedoids = append(partialerr.Failedoids, PowerSNMPv3_Errors_FailedOids_Error{oidv.RSnmpOID, tagandclassERR_EndOfMib})
 					continue
 				default:
 					umerr = fmt.Errorf("no such... tag is: %d", oidv.RSnmpVar.Tag)

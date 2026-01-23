@@ -1085,7 +1085,7 @@ func SNMPErrorIntToText(code int) string {
 //
 // Integrates with ParseError() → SNMPpdu_Errors / SNMPfe_Errors structs.
 func SNMPPDUErrorIntToText(code int) string {
-	if name, ok := SNMPPDUErrorNames[code]; ok {
+	if name, ok := SNMPErrorNames[code]; ok {
 		return name
 	}
 	return fmt.Sprintf("pdu error-status: %d", code)

@@ -34,9 +34,12 @@ const (
 	SNMP_DEFAULTMSGSITE    uint16 = 1360
 
 	// SNMPv2 Exception Tags (ContextSpecific)
-	TAGERR_noSuchObect    = 0
-	TAGERR_noSuchInstance = 1
-	TAGERR_EndOfMib       = 2
+	tagERR_noSuchObject           = 0
+	tagandclassERR_noSuchObject   = 0x80
+	tagERR_noSuchInstance         = 1
+	tagandclassERR_noSuchInstance = 0x81
+	tagERR_EndOfMib               = 2
+	tagandclassERR_EndOfMib       = 0x82
 )
 
 const (

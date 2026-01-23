@@ -46,7 +46,7 @@ func divmod(numerator, denominator int) (quotient, remainder int) {
 //
 //	"1.3.6.1.2.1" → [1,3,6,1,2,1]
 //	"1.3.6.1.4.1.9.9.129.1" → [1,3,6,1,4,1,9,9,129→[0x81,1],1]
-func Convert_OID_StringToIntArray(OIDStr string) (OIDIntArray []int, err error) {
+func Convert_OID_StringToIntArray_DER(OIDStr string) (OIDIntArray []int, err error) {
 	OIDStr = strings.Trim(OIDStr, ".")
 	OIDStringArray := strings.Split(OIDStr, ".")
 	var RetArray []int
@@ -109,6 +109,10 @@ func Convert_OID_StringToIntArray_RAW(OIDStr string) (OIDIntArray []int, err err
 	return RetArray, nil
 }
 
+func ParseOID(OIDStr string) (OIDIntArray []int, err error) {
+	return Convert_OID_StringToIntArray_RAW(OIDStr)
+}
+
 // Convert_OID_IntArrayToString_RAW - INTERNAL utility. Raw OID array → dotted string.
 //
 // **NOT for API calls!** Use ONLY for logging, JSON export, fmt.Printf(), debugging.
@@ -156,7 +160,7 @@ func Convert_OID_IntArrayToString_RAW(OIDIntArray []int) (OIDStr string) {
 //	|---------------|------------|-------------|
 //	| [1,3,0x81,1] | "1.3.129" | "1.3.129.1" |
 //	| [1,3,6,1]    | "1.3.6.1" | "1.3.6.1"   |
-func Convert_OID_IntArrayToString(OIDIntArray []int) (OIDStr string) {
+func Convert_OID_IntArrayToString_DER(OIDIntArray []int) (OIDStr string) {
 	RetStr := ""
 	IntPmFirstByte := 0
 	largevalue := false
@@ -570,7 +574,7 @@ func Convert_Variable_To_String(Var SNMPVar) string {
 			case ASNber.TagOctetString:
 				return formatOctetString(Var.Value)
 			case ASNber.TagOID:
-				return Convert_OID_IntArrayToString(Convert_bytearray_to_intarray(Var.Value))
+				return Convert_OID_IntArrayToString_DER(Convert_bytearray_to_intarray(Var.Value))
 			default:
 				return string(Var.Value)
 			}

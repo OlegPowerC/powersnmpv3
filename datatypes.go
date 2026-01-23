@@ -13,12 +13,6 @@ import (
 	ASNber "github.com/OlegPowerC/asn1modsnmp"
 )
 
-var SNMPPDUErrorNames = map[int]string{
-	TAGERR_noSuchObect:    "NoSuchObect",
-	TAGERR_noSuchInstance: "NoSuchInstance",
-	TAGERR_EndOfMib:       "EndOfMib",
-}
-
 var SNMPErrorNames = map[int]string{
 	sNMP_ErrNoError:                           "NoError",
 	sNMP_ErrResponseTooLarge:                  "ResponseTooLarge",
@@ -64,6 +58,11 @@ var SNMPErrorNames = map[int]string{
 	sNMP_ErrUnexpectedInternalSNMPDriverError: "UnexpectedInternalSNMPDriverError",
 	sNMP_ErrNoHandlerForPDU:                   "NoHandlerForPDU",
 	sNMP_ErrErrorAddingUserCredentials:        "ErrorAddingUserCredentials",
+
+	//Error in VarBind
+	tagandclassERR_noSuchObject:   "NoSuchObject",
+	tagandclassERR_noSuchInstance: "NoSuchInstance",
+	tagandclassERR_EndOfMib:       "EndOfMib",
 }
 
 type SNMPv3_DecodePacket struct {

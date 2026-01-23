@@ -7,45 +7,45 @@ package PowerSNMPv3
 
 import (
 	"reflect"
+	"slices"
 	"testing"
 )
 
 func TestConvert_Variable_To_String(t *testing.T) {
-	var Var SNMPVar
-	Var.Value = []byte("TestVal123")
-	Var.IsCompound = false
-	Var.ValueClass = 0
-	Var.ValueType = 4
-	ConvertedString := Convert_Variable_To_String(Var)
-	if ConvertedString != "TestVal123" {
-		t.Error("Wrong string!")
+	tests := []struct {
+		name string
+		var_ SNMPVar // ← var_ вместо var
+		want string
+	}{
+		{
+			name: "OctetString",
+			var_: SNMPVar{ValueClass: 0, ValueType: 4, Value: []byte("TestVal123")},
+			want: "TestVal123",
+		},
+		{
+			name: "INTEGER",
+			var_: SNMPVar{ValueClass: 0, ValueType: 2, Value: []byte{0, 7}},
+			want: "7",
+		},
+		{
+			name: "IPADDR",
+			var_: SNMPVar{ValueClass: 1, ValueType: 0, Value: []byte{192, 168, 21, 119}},
+			want: "192.168.21.119",
+		},
+		{
+			name: "TIMETICKS",
+			var_: SNMPVar{ValueClass: 1, ValueType: 3, Value: []byte{120}},
+			want: "1.2s",
+		},
 	}
 
-	Var.Value = []byte{0, 7}
-	Var.IsCompound = false
-	Var.ValueClass = 0
-	Var.ValueType = 2
-	ConvertedString = Convert_Variable_To_String(Var)
-	if ConvertedString != "7" {
-		t.Error("Wrong string!")
-	}
-
-	Var.Value = []byte{192, 168, 21, 119}
-	Var.IsCompound = false
-	Var.ValueClass = 1
-	Var.ValueType = 0
-	ConvertedString = Convert_Variable_To_String(Var)
-	if ConvertedString != "192.168.21.119" {
-		t.Error("Wrong string!")
-	}
-
-	Var.Value = []byte{120}
-	Var.IsCompound = false
-	Var.ValueClass = 1
-	Var.ValueType = 3
-	ConvertedString = Convert_Variable_To_String(Var)
-	if ConvertedString != "1.2s" {
-		t.Error("Wrong string!")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := Convert_Variable_To_String(tt.var_)
+			if got != tt.want {
+				t.Errorf("Convert_Variable_To_String() = %q; want %q", got, tt.want)
+			}
+		})
 	}
 }
 
@@ -78,16 +78,16 @@ func TestConvert_bytearray_to_uint(t *testing.T) {
 	}
 }
 
-func TestCovert_OID_IntArrayToString(t *testing.T) {
+func TestConvert_OID_IntArrayToString_DER(t *testing.T) {
 	//69533774
 	TestIntArry := []byte{1, 3, 6, 0x86, 0x8d, 0x1f, 2, 1, 47, 1, 3, 2, 1, 2, 0x86, 0x8d, 0x1f, 1}
-	Str2 := Convert_OID_IntArrayToString(Convert_bytearray_to_intarray(TestIntArry))
+	Str2 := Convert_OID_IntArrayToString_DER(Convert_bytearray_to_intarray(TestIntArry))
 	if Str2 != "1.3.6.99999.2.1.47.1.3.2.1.2.99999.1" {
 		t.Errorf("Error in TestConvert_bytearray_to_int, try to convert: []byte{1, 3, 6, 0x86, 0x8d, 0x1f, 2, 1, 47, 1, 3, 2, 1, 2, 0x86, 0x8d, 0x1f, 1} to int, expected 1.3.6.99999.2.1.47.1.3.2.1.2.99999.1, but got: %s", Str2)
 	}
 }
 
-func TestCovert_OID_IntArrayToString_RAW(t *testing.T) {
+func TestConvert_OID_IntArrayToString_RAW(t *testing.T) {
 	TestIntArry := []byte{1, 3, 6, 0x86, 0x8d, 0x1f, 2, 1, 47, 1, 3, 2, 1, 2, 0x86, 0x8d, 0x1f, 1}
 	Str2 := Convert_OID_IntArrayToString_RAW(Convert_bytearray_to_intarray(TestIntArry))
 	if Str2 != "1.3.6.134.141.31.2.1.47.1.3.2.1.2.134.141.31.1" {
@@ -130,16 +130,28 @@ func TestConvert_snmpint_to_uint32(t *testing.T) {
 	}
 }
 
-func TestConvert_Covert_OID_StringToIntArray(t *testing.T) {
+func TestConvert_Covert_OID_StringToIntArray_DER(t *testing.T) {
 	TestStrOid := ".1.3.6"
-	ConvertetData, _ := Convert_OID_StringToIntArray(TestStrOid)
+	ConvertetData, _ := Convert_OID_StringToIntArray_DER(TestStrOid)
 	if !reflect.DeepEqual(ConvertetData, []int{1, 3, 6}) {
 		t.Errorf("Get value %d", ConvertetData)
 	}
+}
 
-	TestStrOid = ".1.3.6.abc.6"
-	_, ConvErr := Convert_OID_StringToIntArray_RAW(TestStrOid)
+func TestParseOID(t *testing.T) {
+	TestStrOid := ".1.3.6.abc.6"
+	_, ConvErr := ParseOID(TestStrOid)
 	if ConvErr == nil {
 		t.Errorf("Do not get error but OID is wrong")
 	}
+	TestStrOid = "1.3.6.134.141.31.2.1.47.1.3.2.1.2.134.141.31.1"
+	TestIntArry := []int{1, 3, 6, 134, 141, 31, 2, 1, 47, 1, 3, 2, 1, 2, 134, 141, 31, 1}
+	intoid, cverr := ParseOID(TestStrOid)
+	if cverr != nil {
+		t.Error(ConvErr)
+	}
+	if !slices.Equal(intoid, TestIntArry) {
+		t.Errorf("Get value %d", intoid)
+	}
+
 }
