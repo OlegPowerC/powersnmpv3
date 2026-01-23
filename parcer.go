@@ -170,13 +170,13 @@ func receiverV2parser(SNMPparameters *SNMPv3Session, packet []byte, checkmsg_req
 		switch vs.V2VarBind.Tag {
 		case 0x07:
 			if SNMPparameters.Debuglevel > 199 {
-				fmt.Println("Recived Trap MSG!")
+				fmt.Println("Received Trap MSG!")
 			}
 			RetVar.MessageType = TRAP_MESSAGE
 
 		case 0x6:
 			if SNMPparameters.Debuglevel > 199 {
-				fmt.Println("Recived Inform MSG!")
+				fmt.Println("Received Inform MSG!")
 			}
 			RetVar.MessageType = INFORM_MESSAGE
 		}
@@ -426,7 +426,7 @@ func receiverV3parser(SNMPparameters *SNMPv3Session, udppayload []byte, checkmsg
 		switch SNMPparameters.SNMPparams.PrivProtocol {
 		case PRIV_PROTOCOL_AES128, PRIV_PROTOCOL_AES192, PRIV_PROTOCOL_AES256, PRIV_PROTOCOL_AES192A, PRIV_PROTOCOL_AES256A:
 			if len(SecParamByteArray) != 8 {
-				umerr = errors.New("security Parameter lenght != 8 - must be 8 for AES")
+				umerr = errors.New("security Parameter length != 8 - must be 8 for AES")
 				return ReturnSNMPpacker, umerr
 			}
 			//Считаем вектор инициализаци AES128 TBoots+TTime+SecParamByteArray (взято из RecivedSecurity.PrivParams)
@@ -440,7 +440,7 @@ func receiverV3parser(SNMPparameters *SNMPv3Session, udppayload []byte, checkmsg
 			}
 		case PRIV_PROTOCOL_DES:
 			if len(SecParamByteArray) != 8 {
-				umerr = errors.New("security Parameter - lenght != 8 - need for DES")
+				umerr = errors.New("security Parameter - length != 8 - need for DES")
 				return ReturnSNMPpacker, umerr
 			}
 			if len(SNMPparameters.SNMPparams.LocalizedKeyPriv) < 16 {
@@ -486,19 +486,19 @@ func receiverV3parser(SNMPparameters *SNMPv3Session, udppayload []byte, checkmsg
 		switch Recivedv3_PDU.V2VarBind.Tag {
 		case 0x08:
 			if SNMPparameters.Debuglevel > 199 {
-				fmt.Println("Recived Report MSG!")
+				fmt.Println("Received Report MSG!")
 			}
 			ReturnSNMPpacker.MessageType = REPORT_MESSAGE
 
 		case 0x07:
 			if SNMPparameters.Debuglevel > 199 {
-				fmt.Println("Recived Trap MSG!")
+				fmt.Println("Received Trap MSG!")
 			}
 			ReturnSNMPpacker.MessageType = TRAP_MESSAGE
 
 		case 0x6:
 			if SNMPparameters.Debuglevel > 199 {
-				fmt.Println("Recived Inform MSG!")
+				fmt.Println("Received Inform MSG!")
 			}
 			ReturnSNMPpacker.MessageType = INFORM_MESSAGE
 		}
@@ -507,7 +507,7 @@ func receiverV3parser(SNMPparameters *SNMPv3Session, udppayload []byte, checkmsg
 
 	if len(Recivedv3_PDU.V2VarBind.FullBytes) == 0 {
 		//длина данных нулевая
-		umerr = errors.New("recived PDU Not Found")
+		umerr = errors.New("Received PDU Not Found")
 		return ReturnSNMPpacker, umerr
 	}
 
