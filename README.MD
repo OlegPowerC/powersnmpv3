@@ -185,6 +185,7 @@ Result for streaming operations via channels.
 type ChanDataWErr struct {
     Data  SNMP_Packet_V2_Decoded_VarBind // Data
     Error error                          // Error (nil if OK)
+    ValidData bool                       // Data is valid
 }
 ```
 
@@ -334,17 +335,22 @@ Uses `MaxRepetitions` to get multiple values per request.
 Streaming Walk via channel. Results are sent as received.
 
 ```
-func (s *SNMPv3Session) SNMP_Walk_WChan(oid []int, CData chan<- ChanDataWErr)
+func (s *SNMPv3Session) SNMP_Walk_WChan(ctx context.Context,oid []int, CData chan<- ChanDataWErr)
 ```
 
 **Parameters:**
+- `ctx` - context with timeout
 - `oid` - root OID
 - `CData` - channel for results (closed on completion)
 
+Recommended: buffered channel prevents blocking, context adds timeout
+
 **Example:**
 ```
-ch := make(chan snmp.ChanDataWErr)
-go sess.SNMP_Walk_WChan(oid, ch)
+ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
+defer cancel()
+ch := make(chan snmp.ChanDataWErr,30000)
+go sess.SNMP_Walk_WChan(ctx,oid, ch)
 
 for result := range ch {
     if result.Error != nil {
@@ -362,7 +368,7 @@ for result := range ch {
 Streaming BulkWalk via channel.
 
 ```
-func (s *SNMPv3Session) SNMP_BulkWalk_WChan(oid []int, CData chan<- ChanDataWErr)
+func (s *SNMPv3Session) SNMP_BulkWalk_WChan(ctx context.Context,oid []int, CData chan<- ChanDataWErr)
 ```
 
 Similar to `SNMP_Walk_WChan`, but uses GETBULK.

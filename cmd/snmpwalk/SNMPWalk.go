@@ -80,10 +80,12 @@ func main() {
 			os.Exit(1)
 		}
 		ResultNumber++
-		if *RawToo {
-			fmt.Println(PowerSNMP.Convert_OID_IntArrayToString_RAW(gdata.Data.RSnmpOID), "=", PowerSNMP.Convert_Variable_To_String(gdata.Data.RSnmpVar), ":", PowerSNMP.Convert_ClassTag_to_String(gdata.Data.RSnmpVar), gdata.Data.RSnmpVar.Value)
-		} else {
-			fmt.Println(PowerSNMP.Convert_OID_IntArrayToString_RAW(gdata.Data.RSnmpOID), "=", PowerSNMP.Convert_Variable_To_String(gdata.Data.RSnmpVar), ":", PowerSNMP.Convert_ClassTag_to_String(gdata.Data.RSnmpVar))
+		if gdata.ValidData {
+			if *RawToo {
+				fmt.Println(PowerSNMP.Convert_OID_IntArrayToString_RAW(gdata.Data.RSnmpOID), "=", PowerSNMP.Convert_Variable_To_String(gdata.Data.RSnmpVar), ":", PowerSNMP.Convert_ClassTag_to_String(gdata.Data.RSnmpVar), gdata.Data.RSnmpVar.Value)
+			} else {
+				fmt.Println(PowerSNMP.Convert_OID_IntArrayToString_RAW(gdata.Data.RSnmpOID), "=", PowerSNMP.Convert_Variable_To_String(gdata.Data.RSnmpVar), ":", PowerSNMP.Convert_ClassTag_to_String(gdata.Data.RSnmpVar))
+			}
 		}
 	}
 }

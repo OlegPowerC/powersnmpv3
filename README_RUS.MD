@@ -185,6 +185,7 @@ type SNMPVar struct {
 type ChanDataWErr struct {
     Data  SNMP_Packet_V2_Decoded_VarBind // Данные
     Error error                          // Ошибка (nil если OK)
+    ValidData bool                       // Данные действительны
 }
 ```
 
@@ -334,17 +335,22 @@ func (s *SNMPv3Session) SNMP_BulkWalk(oid []int) ([]SNMP_Packet_V2_Decoded_VarBi
 Потоковый Walk через канал. Результаты отправляются по мере получения.
 
 ```
-func (s *SNMPv3Session) SNMP_Walk_WChan(oid []int, CData chan<- ChanDataWErr)
+func (s *SNMPv3Session) SNMP_Walk_WChan(ctx context.Context,oid []int, CData chan<- ChanDataWErr)
 ```
 
 **Параметры:**
+- `ctx` - контекст с таймаутом
 - `oid` - корневой OID
 - `CData` - канал для результатов (закрывается по завершении)
 
+Рекомендация: используйте буферизированный канал и контекст с таймаутом
+
 **Пример:**
 ```
-ch := make(chan snmp.ChanDataWErr)
-go sess.SNMP_Walk_WChan(oid, ch)
+ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
+defer cancel()
+ch := make(chan snmp.ChanDataWErr,30000)
+go sess.SNMP_Walk_WChan(ctx,oid, ch)
 
 for result := range ch {
     if result.Error != nil {
@@ -362,7 +368,7 @@ for result := range ch {
 Потоковый BulkWalk через канал.
 
 ```
-func (s *SNMPv3Session) SNMP_BulkWalk_WChan(oid []int, CData chan<- ChanDataWErr)
+func (s *SNMPv3Session) SNMP_BulkWalk_WChan(ctx context.Context,oid []int, CData chan<- ChanDataWErr)
 ```
 
 Аналогично `SNMP_Walk_WChan`, но использует GETBULK.

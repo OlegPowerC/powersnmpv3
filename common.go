@@ -661,81 +661,49 @@ func (SNMPparameters *SNMPv3Session) SNMP_Walk(oid []int) (ReturnValue []SNMP_Pa
 	return RetResult, RetError
 }
 
-// SNMP_Walk_WChan performs streaming SNMP WALK with results via channel.
+// SNMP_Walk_WChan performs streaming SNMP WALK operation with results delivered via channel.
 //
-// Classic GETNEXT-based lexicographic traversal with non-blocking streaming.
-// Streams objects as discovered - memory efficient for medium tables (<1000 objects).
+// Classic **GETNEXT-based lexicographic traversal** — the reliable, memory-efficient standard for SNMP walking.
+// Streams VarBinds as discovered (1 object buffered at a time). Optimal for **small-medium MIB tables** (<1000 objects).
 //
 // Arguments:
 //
-//	oid   - Base OID for walk (e.g.: []int{1,3,6,1,2,1,2,2,1} = ifTable)
-//	CData - Output channel for ChanDataWErr structs (range loop safe)
+//	ctx  - Context for cancellation/timeout (recommended: context.WithTimeout)
+//	oid  - Base OID to walk (ex: `[]int{1,3,6,1,2,1,2,2,1}` = ifTable)
+//	CData - Output channel of `ChanDataWErr` (range-loop safe)
 //
-// Channel semantics:
-//   - Streams ChanDataWErr{Data: varbind, Error: nil} for valid objects
-//   - Individual VarBind exceptions via Error field (stream continues)
-//   - Closes channel on completion/PDU failure
-//   - Goroutine-safe, multiple consumers supported
+// Channel contract (guaranteed semantics):
+//   - **Success**:   `ChanDataWErr{Data: varbind, Error: nil}`
+//   - **Exception**: `ChanDataWErr{Data: nil, Error: snmpError}` (stream **continues**)
+//   - **End**:       `close(CData)` on completion/PDU failure/cancellation
+//   - **Safe**:      `for result := range CData {}` — goroutine-safe, multiple consumers OK
 //
-// Example:
+// Production patterns:
 //
-//	ifTableOID := []int{1,3,6,1,2,1,2,2,1}
-//	ch := make(chan ChanDataWErr, 50)
+// ┌──────────────────────────────────────┬─────────────────────────────────────┐
+// │           SNMP_Walk_WChan            │         SNMP_BulkWalk_WChan         │
+// ├──────────────────────────────────────┼─────────────────────────────────────┤
+// │ Small tables (<100 objs)             │ Large tables (>1000 objs)           │
+// │ Low latency (1 PDU)                  │ High throughput (25-50x faster)     │
+// │ Memory: 1 object buffered            │ Memory: bulk buffer                 │
+// │ sysUpTime, ifAlias, sysDescr         │ ifTable, ipAddrTable, tcpConnTable  │
+// │ Real-time dashboards                 │ Bulk collectors (Prometheus)        │
+// └──────────────────────────────────────┴─────────────────────────────────────┘
 //
-//	go sess.SNMP_Walk_WChan(ifTableOID, ch)
+// Error resilience:
+//   - **VarBind errors** → logged, stream continues
+//   - **Network/PDU failure** → immediate `close(CData)`
+//   - **Context cancel** → clean shutdown, `close(CData)`
+//   - **Unsupported SNMP version** → single error + `close(CData)`
 //
-//	total := 0
-//	for result := range ch {
-//	    if result.Error != nil {
-//	        log.Printf("Skipped: %v", result.Error)
-//	        continue
-//	    }
-//	    fmt.Printf("%s = %s\n",
-//	        Convert_OID_IntArrayToString_RAW(result.Data.RSnmpOID),
-//	        Convert_Variable_To_String(result.Data.RSnmpVar))
-//	    total++
-//	}
-//	fmt.Println("Total objects:", total)
-//
-// Production streaming patterns:
-//
-//	// Real-time dashboard updates
-//	ch := make(chan ChanDataWErr, 100)
-//	go sess.SNMP_Walk_WChan(ifTableOID, ch)
-//
-//	for result := range ch {
-//	    if result.Error == nil {
-//	        updateDashboard(result.Data)  // Live updates!
-//	    }
-//	}
-//
-// vs SNMP_BulkWalk_WChan:
-//
-//	| Use case | SNMP_Walk_WChan | SNMP_BulkWalk_WChan |
-//	|----------|----------------|---------------------|
-//	| Small tables (<100) |  Reliable | Overkill |
-//	| Large tables (>1000) |  Slow |  25-50x faster |
-//	| Real-time streaming |  Low latency | Burst latency |
-//	| Memory constrained |  1 object buffered | Bulk buffered |
-//
-// Error handling:
-//   - VarBind exceptions → Error field populated, stream continues
-//   - PDU/network failure → channel closed immediately
-//   - Unsupported version → immediate error + close(CData)
-//
-// Channel lifecycle:
-//  1. Objects → ChanDataWErr{Data: varbind, Error: nil}
-//  2. Exceptions → ChanDataWErr{Data: nil, Error: snmpError}
-//  3. Completion/failure → close(CData)
-//  4. Safe: for result := range ch {}
-//
-// Optimal for:
-//   - Small-medium MIB subtrees (sysUpTime, ifAlias table)
-//   - Real-time monitoring (1 PDU latency)
-//   - Memory-constrained streaming
+// Use cases - PERFECT FOR:
+//   - Real-time monitoring dashboards (sysUpTime, ifAlias)
+//   - Memory-constrained environments (IoT, edge)
 //   - Debugging/verbose logging
+//   - Small MIB subtrees (<100 objects)
+//   - Fallback when BulkWalk fails (agent incompatibility)
 //
-// Use SNMP_BulkWalk_WChan for: ifTable, ipAddrTable, tcpConnTable (>100 objects)
+// Use SNMP_BulkWalk_WChan for ifTable/ipTable scale (1000+ objects).
 func (SNMPparameters *SNMPv3Session) SNMP_Walk_WChan(ctx context.Context, oid []int, CData chan<- ChanDataWErr) {
 	switch SNMPparameters.SNMPparams.SNMPversion {
 	case 3:
@@ -766,53 +734,100 @@ func (SNMPparameters *SNMPv3Session) SNMP_Walk_WCallback(oid []int, callback fun
 // Concurrent lexicographic traversal using SNMPv2_GETBULK PDUs (RFC3416 §4.2.3).
 // Streams results as they arrive - ideal for large tables (ifTable 1000+ interfaces).
 //
+// Do not use context.Background() without timeout - may cause deadlock if receiver
+// stops reading from the channel.
+//
 // Arguments:
 //
+//	ctx    - Context with timeout/deadline (REQUIRED for graceful cancellation):
+//	         * WithTimeout: automatic termination after duration
+//	         * WithDeadline: termination at specific time
+//	         * WithCancel: manual cancellation support
+//	         WARNING: context.Background() alone may cause goroutine leak!
 //	oid    - Base OID for bulk walk (e.g.: []int{1,3,6,1,2,1,2,2,1} = ifTable)
 //	CData  - Output channel receiving ChanDataWErr structs:
-//	         * Data:  SNMP_Packet_V2_Decoded_VarBind (valid objects)
-//	         * Error: nil or individual VarBind exceptions
+//	         * Data:      SNMP_Packet_V2_Decoded_VarBind (valid objects)
+//	         * Error:     nil, individual VarBind exceptions, or ctx.Err()
+//	         * ValidData: true for valid data, false for errors
+//
+// Context cancellation:
+//   - Terminates walk immediately on ctx.Done()
+//   - Sends context.Canceled or context.DeadlineExceeded via Error field
+//   - Closes channel gracefully (safe for range loops)
+//   - Does NOT block indefinitely waiting for receiver
 //
 // Channel semantics:
 //   - Non-blocking producer: sends results as fast as device responds
-//   - Closes channel on completion/error (range loop safe)
+//   - Closes channel on completion/error/cancellation (range loop safe)
 //   - Goroutine-safe: multiple consumers possible
+//   - Buffering recommended (100-1000) for optimal performance
 //
-// Example:
+// Basic example with timeout:
 //
-//	// High-performance interface table streaming
+//	// Walk with automatic 30-second timeout
+//	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+//	defer cancel()
+//
 //	ifTableOID := []int{1,3,6,1,2,1,2,2,1}
 //	ch := make(chan ChanDataWErr, 100)  // Buffered for performance
 //
-//	go sess.SNMP_BulkWalk_WChan(ifTableOID, ch)
+//	go sess.SNMP_BulkWalk_WChan(ctx, ifTableOID, ch)
 //
-//	interfaces := 0
 //	for result := range ch {
-//	    if result.Error != nil {
-//	        log.Printf("VarBind error: %v", result.Error)
-//	        continue  // Continue streaming despite individual failures
+//	    if !result.ValidData {
+//	        if result.Error == context.DeadlineExceeded {
+//	            log.Println("Walk timeout - partial results received")
+//	            break
+//	        }
+//	        log.Printf("Error: %v", result.Error)
+//	        continue
 //	    }
 //	    fmt.Printf("%s = %s\n",
 //	        Convert_OID_IntArrayToString_RAW(result.Data.RSnmpOID),
 //	        Convert_Variable_To_String(result.Data.RSnmpVar))
-//	    interfaces++
 //	}
-//	fmt.Printf("Processed %d interfaces\n", interfaces)
 //
-// Production streaming patterns:
+// Manual cancellation example:
 //
-//	// Concurrent processing (100x faster than SNMP_Walk)
+//	ctx, cancel := context.WithCancel(context.Background())
+//	defer cancel()
+//
+//	ch := make(chan ChanDataWErr, 100)
+//	go sess.SNMP_BulkWalk_WChan(ctx, ifTableOID, ch)
+//
+//	found := false
+//	for result := range ch {
+//	    if !result.ValidData {
+//	        continue
+//	    }
+//	    if isWhatWeNeed(result.Data) {
+//	        found = true
+//	        cancel()  // Stop walk immediately - found what we need!
+//	        break
+//	    }
+//	}
+//
+// Production streaming with timeout:
+//
+//	// Concurrent processing with deadline
+//	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+//	defer cancel()
+//
 //	var wg sync.WaitGroup
 //	ch := make(chan ChanDataWErr, 1000)
-//	go sess.SNMP_BulkWalk_WChan(ifTableOID, ch)
+//	go sess.SNMP_BulkWalk_WChan(ctx, ifTableOID, ch)
 //
 //	for result := range ch {
+//	    if !result.ValidData {
+//	        if result.Error == context.DeadlineExceeded {
+//	            log.Println("Walk timeout reached")
+//	        }
+//	        continue
+//	    }
 //	    wg.Add(1)
 //	    go func(r ChanDataWErr) {
 //	        defer wg.Done()
-//	        if r.Error == nil {
-//	            processInterface(r.Data)  // Parallel processing!
-//	        }
+//	        processInterface(r.Data)  // Parallel processing!
 //	    }(result)
 //	}
 //	wg.Wait()
@@ -822,23 +837,46 @@ func (SNMPparameters *SNMPv3Session) SNMP_Walk_WCallback(oid []int, callback fun
 //   - Non-blocking streaming → immediate processing
 //   - Channel buffering → backpressure handling
 //   - Goroutine parallelization → CPU-bound processing
+//   - Context-based cancellation → resource efficiency
 //
 // Error handling:
 //   - Individual VarBind errors → streamed via Error field (walk continues)
 //   - PDU/network failures → channel closed immediately
+//   - Context cancellation → context.Canceled or context.DeadlineExceeded
 //   - Unsupported version → immediate error + channel close
 //
 // Channel lifecycle:
-//  1. Objects streamed as ChanDataWErr{Data: varbind, Error: nil}
-//  2. Individual exceptions: ChanDataWErr{Data: nil, Error: snmpError}
-//  3. Completion/PDU failure: close(CData)
-//  4. Safe for range loop: for result := range ch {}
+//  1. Objects streamed as ChanDataWErr{Data: varbind, Error: nil, ValidData: true}
+//  2. Individual exceptions: ChanDataWErr{Data: empty, Error: snmpError, ValidData: false}
+//  3. Context cancelled: ChanDataWErr{Error: ctx.Err(), ValidData: false}
+//  4. Completion/PDU failure: close(CData)
+//  5. Safe for range loop: for result := range ch {}
+//
+// Common pitfalls:
+//
+//	WRONG - May deadlock if receiver stops reading:
+//	  ctx := context.Background()
+//	  go sess.SNMP_BulkWalk_WChan(ctx, oid, ch)
+//
+//	CORRECT - Always use timeout:
+//	  ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+//	  defer cancel()
+//	  go sess.SNMP_BulkWalk_WChan(ctx, oid, ch)
+//
+//	WRONG - Forgot to read from channel:
+//	  go sess.SNMP_BulkWalk_WChan(ctx, oid, ch)
+//	  // No for range ch - goroutine leak!
+//
+//	CORRECT - Always consume the channel:
+//	  go sess.SNMP_BulkWalk_WChan(ctx, oid, ch)
+//	  for result := range ch { /* process */ }
 //
 // Optimal for:
 //   - Large MIB tables (ifTable, ipAddrTable, tcpConnTable)
 //   - Real-time monitoring dashboards
 //   - Concurrent data processing pipelines
 //   - Memory-constrained environments (streaming vs buffering)
+//   - Interactive applications requiring cancellation
 func (SNMPparameters *SNMPv3Session) SNMP_BulkWalk_WChan(ctx context.Context, oid []int, CData chan<- ChanDataWErr) {
 	switch SNMPparameters.SNMPparams.SNMPversion {
 	case 3:
