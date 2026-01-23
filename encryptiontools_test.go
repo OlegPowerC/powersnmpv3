@@ -1,3 +1,5 @@
+//go:build !integration
+
 // PowerSNMPv3 - SNMP library for Go
 // Автор: Волков Олег, ООО "Пауэр Си"
 // Author: Volkov Oleg, PowerC LLC
