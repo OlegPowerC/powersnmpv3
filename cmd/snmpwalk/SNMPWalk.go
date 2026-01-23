@@ -7,9 +7,11 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
+	"time"
 
 	PowerSNMP "github.com/OlegPowerC/powersnmpv3"
 )
@@ -61,12 +63,14 @@ func main() {
 
 	iArOID, _ := PowerSNMP.Convert_OID_StringToIntArray_RAW(*StrOid)
 
-	ChIn := make(chan PowerSNMP.ChanDataWErr)
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
+	defer cancel()
+	ChIn := make(chan PowerSNMP.ChanDataWErr, 3000)
 
 	if *Bulk {
-		go Ssess.SNMP_BulkWalk_WChan(iArOID, ChIn)
+		go Ssess.SNMP_BulkWalk_WChan(ctx, iArOID, ChIn)
 	} else {
-		go Ssess.SNMP_Walk_WChan(iArOID, ChIn)
+		go Ssess.SNMP_Walk_WChan(ctx, iArOID, ChIn)
 	}
 
 	ResultNumber := 0
