@@ -6,6 +6,7 @@
 package PowerSNMPv3
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net"
@@ -735,12 +736,12 @@ func (SNMPparameters *SNMPv3Session) SNMP_Walk(oid []int) (ReturnValue []SNMP_Pa
 //   - Debugging/verbose logging
 //
 // Use SNMP_BulkWalk_WChan for: ifTable, ipAddrTable, tcpConnTable (>100 objects)
-func (SNMPparameters *SNMPv3Session) SNMP_Walk_WChan(oid []int, CData chan<- ChanDataWErr) {
+func (SNMPparameters *SNMPv3Session) SNMP_Walk_WChan(ctx context.Context, oid []int, CData chan<- ChanDataWErr) {
 	switch SNMPparameters.SNMPparams.SNMPversion {
 	case 3:
-		SNMPparameters.snmpv3_Walk_WChan(oid, SNMPv2_REQUEST_GETNEXT, CData)
+		SNMPparameters.snmpv3_Walk_WChan(ctx, oid, SNMPv2_REQUEST_GETNEXT, CData)
 	case 2:
-		SNMPparameters.snmpv2_Walk_WChan(oid, SNMPv2_REQUEST_GETNEXT, CData)
+		SNMPparameters.snmpv2_Walk_WChan(ctx, oid, SNMPv2_REQUEST_GETNEXT, CData)
 	default:
 		CData <- ChanDataWErr{Error: errors.New("unsupported SNMP version")}
 		close(CData)
@@ -838,12 +839,12 @@ func (SNMPparameters *SNMPv3Session) SNMP_Walk_WCallback(oid []int, callback fun
 //   - Real-time monitoring dashboards
 //   - Concurrent data processing pipelines
 //   - Memory-constrained environments (streaming vs buffering)
-func (SNMPparameters *SNMPv3Session) SNMP_BulkWalk_WChan(oid []int, CData chan<- ChanDataWErr) {
+func (SNMPparameters *SNMPv3Session) SNMP_BulkWalk_WChan(ctx context.Context, oid []int, CData chan<- ChanDataWErr) {
 	switch SNMPparameters.SNMPparams.SNMPversion {
 	case 3:
-		SNMPparameters.snmpv3_Walk_WChan(oid, SNMPv2_REQUEST_GETBULK, CData)
+		SNMPparameters.snmpv3_Walk_WChan(ctx, oid, SNMPv2_REQUEST_GETBULK, CData)
 	case 2:
-		SNMPparameters.snmpv2_Walk_WChan(oid, SNMPv2_REQUEST_GETBULK, CData)
+		SNMPparameters.snmpv2_Walk_WChan(ctx, oid, SNMPv2_REQUEST_GETBULK, CData)
 	default:
 		CData <- ChanDataWErr{Error: errors.New("unsupported SNMP version")}
 		close(CData)
