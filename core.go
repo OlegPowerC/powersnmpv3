@@ -63,7 +63,7 @@ func SNMPv3_Discovery(Ndev NetworkDevice) (SNMPsession *SNMPv3Session, err error
 		Session.SNMPparams.MaxRepetitions = int32(Ndev.SNMPparameters.MaxRepetitions)
 	}
 
-	if Ndev.SNMPparameters.MaxMsgSize <= 0 || Ndev.SNMPparameters.MaxMsgSize > SNMP_MAXMSGSIZE {
+	if Ndev.SNMPparameters.MaxMsgSize <= SNMP_MINMSGSITE || Ndev.SNMPparameters.MaxMsgSize > SNMP_MAXMSGSIZE {
 		Session.SNMPparams.MaxMsgSize = SNMP_DEFAULTMSGSITE
 	} else {
 		Session.SNMPparams.MaxMsgSize = Ndev.SNMPparameters.MaxMsgSize

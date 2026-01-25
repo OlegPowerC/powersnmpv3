@@ -32,6 +32,7 @@ const (
 	SNMP_DEFAULTREPETITION uint16 = 25
 	SNMP_MAXMSGSIZE        uint16 = 65535
 	SNMP_DEFAULTMSGSITE    uint16 = 1360
+	SNMP_MINMSGSITE        uint16 = 500
 
 	// SNMPv2 Exception Tags (ContextSpecific)
 	tagERR_noSuchObject           = 0

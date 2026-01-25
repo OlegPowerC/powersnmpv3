@@ -1,8 +1,7 @@
 ## v1.2.2
 
-- Added field **MaxMsgSize** to **NetworkDevice**
-
-**What is MaxMsgSize:**  
- Maximum size of the SNMP message.  
- If you want to avoid IP fragmentation, you must select **MaxMsgSize** properly with **MaxRepetitions**.  
- Default MaxMsgSize is 1360, which is suitable for typical LAN and VPN.
+- Added field **MaxMsgSize** in `NetworkDevice` for controlling SNMP message size.  
+  - Prevent IP fragmentation when properly configured with MaxRepetitions 
+  - Default: 1360 bytes (suitable for typical LAN and VPN environments)
+  - Configurable range: 500-65535 bytes
+  - Not applicable for SNMP v2c
