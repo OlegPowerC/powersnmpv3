@@ -23,7 +23,7 @@ const (
 
 	// Limits & Defaults
 	SNMP_MAXIMUMWALK              = 1000000
-	SNMP_BUFFERSIZE               = 2048
+	SNMP_BUFFERSIZE               = 65535
 	SNMP_MAXTIMEOUT_MS            = 1000
 	SNMP_DEFAULTTIMEOUT_MS        = 300
 	SNMP_MAXIMUM_RETRY            = 10

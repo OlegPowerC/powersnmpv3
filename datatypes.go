@@ -455,5 +455,6 @@ type SNMPParameters struct {
 	TimeoutBtwRepeat int
 	MaxRepetitions   int32
 	MaxMsgSize       uint16
+	rxbuffersize     uint16 // Буфер приема для v3
 	Community        string
 }

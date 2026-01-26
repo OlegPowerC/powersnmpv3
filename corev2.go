@@ -289,6 +289,7 @@ func SNMPv2_Init(Ndev NetworkDevice) (SNMPsession *SNMPv3Session, err error) {
 	Session.SNMPparams.SNMPversion = Ndev.SNMPparameters.SNMPversion
 	Session.IPaddress = Ndev.IPaddress
 	Session.Port = Ndev.Port
+	Session.SNMPparams.rxbuffersize = SNMP_BUFFERSIZE
 	if Ndev.SNMPparameters.RetryCount <= 0 || Ndev.SNMPparameters.RetryCount > SNMP_MAXIMUM_RETRY {
 		Session.SNMPparams.RetryCount = SNMP_DEFAULTRETRY
 	} else {
@@ -410,6 +411,9 @@ func (SNMPparameters *SNMPv3Session) sendSnmpv2GetRequestPrototype(oidValue []SN
 			//Ожидаем данные не позднее Текущее время плюс TMs
 			rlen, readerr := SNMPparameters.conn.Read(p)
 			if readerr == nil {
+				if rlen > int(SNMPparameters.SNMPparams.rxbuffersize) {
+					return SNMPpackerv2_FP, fmt.Errorf("received data len bigger than buffer")
+				}
 				//Ошибок чтения нет
 				//Пакет получен, разберем его
 				var parcerror error

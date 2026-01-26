@@ -489,6 +489,7 @@ func SNMP_Init(Ndev NetworkDevice) (*SNMPv3Session, error) {
 	}
 	switch Ndev.SNMPparameters.SNMPversion {
 	case 3:
+
 		RetSession, RetError = SNMPv3_Discovery(Ndev)
 	case 2:
 		RetSession, RetError = SNMPv2_Init(Ndev)

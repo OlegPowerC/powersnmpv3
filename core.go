@@ -68,6 +68,7 @@ func SNMPv3_Discovery(Ndev NetworkDevice) (SNMPsession *SNMPv3Session, err error
 	} else {
 		Session.SNMPparams.MaxMsgSize = Ndev.SNMPparameters.MaxMsgSize
 	}
+	Session.SNMPparams.rxbuffersize = Session.SNMPparams.MaxMsgSize
 
 	Session.SNMPparams.AuthKey = Ndev.SNMPparameters.AuthKey
 	Session.SNMPparams.PrivKey = Ndev.SNMPparameters.PrivKey
@@ -395,7 +396,7 @@ func (SNMPparameters *SNMPv3Session) sendSnmpv3GetRequestPrototype(oidValue []SN
 	if errread != nil {
 		return ReturnSNMPpacker, errread
 	}
-	p := make([]byte, SNMP_BUFFERSIZE)
+	p := make([]byte, SNMPparameters.SNMPparams.rxbuffersize)
 
 	writedn := 0
 	SendRequest := true
@@ -430,6 +431,9 @@ func (SNMPparameters *SNMPv3Session) sendSnmpv3GetRequestPrototype(oidValue []SN
 			//Ожидаем данные не позднее Текущее время плюс rdeadLine
 			rlen, readerr := SNMPparameters.conn.Read(p)
 			if readerr == nil {
+				if rlen > int(SNMPparameters.SNMPparams.rxbuffersize) {
+					return ReturnSNMPpacker, fmt.Errorf("received data len bigger than buffer")
+				}
 				//Ошибок чтения нет
 				//Пакет получен, разберем его
 				var parcerror error
