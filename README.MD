@@ -582,10 +582,10 @@ const (
 )
 ```
 
----
-
 **Workflow:**  
 After initial packet parsing extracts Username from SNMPv3 header, matching credentials can be looked up in a map by Username for decryption/authentication.
+
+---
 
 ### Helper Functions
 
