@@ -195,12 +195,6 @@ func (SNMPparameters *SNMPv3Session) makeMessage(oidValue []SNMP_Packet_V2_VarBi
 	var currentPrivParam uint64
 	var currentPrivParamDes uint32
 
-	if SNMPparameters.SNMPparams.PrivProtocol == PRIV_PROTOCOL_DES {
-		if len(SNMPparameters.SNMPparams.LocalizedKeyPriv) < 16 {
-			return retbytes, errors.New("DES необходим локализованный ключ хотябы 16 байт")
-		}
-	}
-
 	SNMP_Packet.Version = 3
 	TBoots := make([]byte, 4)
 	TTime := make([]byte, 4)
