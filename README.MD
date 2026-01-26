@@ -135,9 +135,24 @@ type SNMPUserParameters struct {
     RetryCount       int    // Retry count (1-10, default 3)
     TimeoutBtwRepeat int    // Timeout between retries in ms (default 300)
     MaxRepetitions   uint16 // Max repetitions for BulkWalk (default 25)
+    MaxMsgSize       uint16 // Max SNMP v3 message size
     Community        string // Community string (v2c)
 }
 ```
+
+| Parameter        | Type   | description                                                                                                                                                                                                                                  |
+|------------------|--------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| SNMPversion      | int    | SNMP version, 2 for v2c, 3 for v3                                                                                                                                                                                                            |
+| Username         | string | USM User for SNMP v3                                                                                                                                                                                                                         |
+| AuthKey          | string | Authentication password for v3                                                                                                                                                                                                               |
+| AuthProtocol     | string | "md5", "sha", "sha224", "sha256", "sha384", "sha512"                                                                                                                                                                                         |
+| PrivKey          | string | Privacy password for v3                                                                                                                                                                                                                      |
+| PrivProtocol     | string | "des", "aes", "aes192", "aes256", "aes192a", "aes256a"                                                                                                                                                                                       |
+| ContextName      | string | Optional SNMP v3 context name. For example, to retrieve a MAC address table for VLAN 10 on a Cisco switch, specify the vlan-10 context                                                                                                       |
+| RetryCount       | int    | Retry count (1-10, default 3)                                                                                                                                                                                                                |
+| TimeoutBtwRepeat | int    | Timeout between retries in ms (default 300). Uses linear backoff: timeout = base × (attempt + 1)                                                                                                                                             |
+| MaxRepetitions   | uint16 | Max repetitions for BulkWalk (default 25)                                                                                                                                                                                                    |
+| MaxMsgSize       | Uint16 | limits the maximum size of SNMP messages sent to the device. It functions similarly to the MSS (Maximum Segment Size) parameter in TCP, defining the upper limit for the payload to avoid IP fragmentation and improve delivery reliability. |
 
 ### SNMPv3Session
 
