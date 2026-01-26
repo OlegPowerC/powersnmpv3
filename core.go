@@ -405,7 +405,7 @@ func (SNMPparameters *SNMPv3Session) sendSnmpv3GetRequestPrototype(oidValue []SN
 	}
 
 	if len(SNMPv3Packet) > SNMPparameters.SNMPparams.txMaxMsgSize {
-		return ReturnSNMPpacker, fmt.Errorf("cannot send data, data loo big")
+		return ReturnSNMPpacker, fmt.Errorf("cannot send data, data too big")
 	}
 
 	p := make([]byte, SNMPparameters.SNMPparams.rxbuffersize)
