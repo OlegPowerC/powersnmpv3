@@ -531,6 +531,7 @@ typeStr := snmp.Convert_ClassTag_to_String(varbind.RSnmpVar)
 ---
 
 ### TRAP/INFORM Handling
+Supports simultaneous reception of SNMP v2c and SNMP v3 TRAPs/INFORMs
 
 #### ParseTrapUsername
 
@@ -582,6 +583,9 @@ const (
 ```
 
 ---
+
+**Workflow:**  
+After initial packet parsing extracts Username from SNMPv3 header, matching credentials can be looked up in a map by Username for decryption/authentication.
 
 ### Helper Functions
 
