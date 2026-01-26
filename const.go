@@ -22,17 +22,19 @@ const (
 	SNMP_type_COUNTER64 = 6
 
 	// Limits & Defaults
-	SNMP_MAXIMUMWALK              = 1000000
-	SNMP_BUFFERSIZE               = 65535
-	SNMP_MAXTIMEOUT_MS            = 1000
-	SNMP_DEFAULTTIMEOUT_MS        = 300
-	SNMP_MAXIMUM_RETRY            = 10
-	SNMP_DEFAULTRETRY             = 3
-	SNMP_MAXREPETITION     uint16 = 80
-	SNMP_DEFAULTREPETITION uint16 = 25
-	SNMP_MAXMSGSIZE        uint16 = 65535
-	SNMP_DEFAULTMSGSITE    uint16 = 1360
-	SNMP_MINMSGSITE        uint16 = 500
+	SNMP_MAXIMUMWALK                     = 1000000
+	SNMP_BUFFERSIZE                      = 65535
+	SNMP_MAXTIMEOUT_MS                   = 1000
+	SNMP_DEFAULTTIMEOUT_MS               = 300
+	SNMP_MAXIMUM_RETRY                   = 10
+	SNMP_DEFAULTRETRY                    = 3
+	SNMP_MAXREPETITION            uint16 = 80
+	SNMP_DEFAULTREPETITION        uint16 = 25
+	SNMP_MAXMSGSIZE               uint16 = 65535
+	SNMP_DEFAULTMSGSITE           uint16 = 1360
+	SNMP_MINMSGSITE               uint16 = 500
+	SNMP_START_TX_MAXMSGSIZE             = 1360
+	MIN_ALLOWED_TX_MAXMESSAGESIZE        = 500
 
 	// SNMPv2 Exception Tags (ContextSpecific)
 	tagERR_noSuchObject           = 0

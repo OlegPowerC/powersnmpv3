@@ -46,6 +46,7 @@ func SNMPv3_Discovery(Ndev NetworkDevice) (SNMPsession *SNMPv3Session, err error
 	Session.Port = Ndev.Port
 	Session.SNMPparams.ContextName = Ndev.SNMPparameters.ContextName
 	Session.SNMPparams.SNMPversion = Ndev.SNMPparameters.SNMPversion
+	Session.SNMPparams.txMaxMsgSize = SNMP_START_TX_MAXMSGSIZE
 	if Ndev.SNMPparameters.RetryCount <= 0 || Ndev.SNMPparameters.RetryCount > SNMP_MAXIMUM_RETRY {
 		Session.SNMPparams.RetryCount = SNMP_DEFAULTRETRY
 	} else {
@@ -135,6 +136,12 @@ func SNMPv3_Discovery(Ndev NetworkDevice) (SNMPsession *SNMPv3Session, err error
 		}
 
 		Session.SNMPparams.EngineID = rts.SecuritySettings.AuthEng
+
+		// Установим MaxMessageSize в сторону агента (из того что он нам предложил)
+		if rts.GlobalData.MsgMaxSize >= MIN_ALLOWED_TX_MAXMESSAGESIZE {
+			Session.SNMPparams.txMaxMsgSize = rts.GlobalData.MsgMaxSize
+		}
+
 		Session.SNMPparams.ContextEngineId = rts.SecuritySettings.AuthEng
 		if len(Session.SNMPparams.EngineID) > 0 {
 			Session.SNMPparams.DiscoveredEngineId.Store(true)
@@ -396,6 +403,11 @@ func (SNMPparameters *SNMPv3Session) sendSnmpv3GetRequestPrototype(oidValue []SN
 	if errread != nil {
 		return ReturnSNMPpacker, errread
 	}
+
+	if len(SNMPv3Packet) > SNMPparameters.SNMPparams.txMaxMsgSize {
+		return ReturnSNMPpacker, fmt.Errorf("cannot send data, data loo big")
+	}
+
 	p := make([]byte, SNMPparameters.SNMPparams.rxbuffersize)
 
 	writedn := 0
