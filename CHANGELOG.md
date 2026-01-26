@@ -7,3 +7,7 @@
   - Not applicable for SNMP v2c
 ## v1.2.3
 - Fixed DES key error
+
+## v1.2.4
+- Fix ASN.1 truncated error: remove fPKCS5UnPadding for SNMPv3
+  asn1.Unmarshal handles PKCS5 padding automatically (RFC3414)
