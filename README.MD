@@ -83,6 +83,13 @@ func main() {
     }
 }
 ```
+### Smart Session Parameters
+
+| Parameter            | Default    | Feature                                     |
+|----------------------|------------|---------------------------------------------|
+| **TimeoutBtwRepeat** | 300ms      | `base × (attempt+1)`: 300→600→900ms backoff |
+| **MaxMsgSize**       | 1360 bytes | Like TCP MSS — prevents IP fragmentation    |
+| **MaxRepetitions**   | 25         | BulkWalk without packet loss                |
 
 ### SNMPv2c Get
 
