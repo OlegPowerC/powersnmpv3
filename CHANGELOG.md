@@ -11,3 +11,8 @@
 ## v1.2.4
 - Fix ASN.1 truncated error: remove fPKCS5UnPadding for SNMPv3
   asn1.Unmarshal handles PKCS5 padding automatically (RFC3414)
+
+## v1.2.6
+- Set SNMPv2 RX buffer size to 65535 bytes
+- Set SNMPv3 RX buffer size equal to MaxMsgSize
+- Discover MaxMsgSize from the agent and avoid sending data exceeding this limit
