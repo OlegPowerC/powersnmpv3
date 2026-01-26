@@ -199,7 +199,7 @@ func decryptDES(src, key, iv []byte) (DecryptedData []byte, err error) {
 		return DecryptedData, errors.New("Source length error")
 	}
 	var ReturnData []byte
-	var UnpadingErr error
+	//var UnpadingErr error
 	desBlockDecrypter, err := des.NewCipher(key)
 	if err != nil {
 		return ReturnData, err
@@ -207,10 +207,12 @@ func decryptDES(src, key, iv []byte) (DecryptedData []byte, err error) {
 	ReturnData = make([]byte, len(src))
 	desDecrypter := cipher.NewCBCDecrypter(desBlockDecrypter, iv)
 	desDecrypter.CryptBlocks(ReturnData, src)
-	ReturnData, UnpadingErr = fPKCS5UnPadding(ReturnData, desBlockDecrypter.BlockSize(), true)
-	if UnpadingErr != nil {
-		return ReturnData, UnpadingErr
-	}
+	// No unpadding for SNMPv3: asn1.Unmarshal ignores PKCS5 trailing bytes
+	// Fixes devices with invalid padding (Telefly: 0x02 0x01 instead of 0x02 0x02)
+	//ReturnData, UnpadingErr = fPKCS5UnPadding(ReturnData, desBlockDecrypter.BlockSize(), true)
+	//if UnpadingErr != nil {
+	//	return ReturnData, UnpadingErr
+	//}
 	return ReturnData, nil
 }
 
