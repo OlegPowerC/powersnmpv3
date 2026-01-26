@@ -1,7 +1,7 @@
 # PowerSNMPv3
+[![Go](https://img.shields.io/badge/go-%3E%3D1.21-blue.svg)](https://pkg.go.dev/github.com/OlegPowerC/powersnmpv3)
 [![Go Report Card](https://goreportcard.com/badge/github.com/OlegPowerC/powersnmpv3)](https://goreportcard.com/report/github.com/OlegPowerC/powersnmpv3)
-[![GoDoc](https://godoc.org/github.com/OlegPowerC/powersnmpv3?status.svg)](https://godoc.org/github.com/OlegPowerC/powersnmpv3)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)  
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 
 **SNMP v2c/v3 библиотека на чистом Go**
