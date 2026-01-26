@@ -934,3 +934,26 @@ MIT License
 Commercial version with extended support available.
 
 **Contact:** oleg@powerc.ru
+
+### v1.2.6 – Improved Buffer Management and MaxMsgSize Discovery
+##### What’s new  
+
+    SNMPv2 buffers:
+    The RX buffer size is now fixed at 65535 bytes, while the TX buffer defaults to 1500 bytes (can be modified via a constant).
+
+    SNMPv3 buffers:
+    The RX buffer size now dynamically matches the MaxMsgSize value negotiated with the agent.
+
+    Dynamic discovery:
+    During the initial exchange, the library automatically discovers the agent’s MaxMsgSize and adjusts the session configuration. Subsequent messages are validated to ensure they do not exceed this limit.
+
+##### Why this matters
+
+These changes make message exchange more robust across different devices and agents, especially those with non‑standard or limited buffer sizes.
+They also reduce the risk of transmission errors and improve performance when communicating with high‑capacity agents.
+Impact
+
+    Better interoperability with diverse SNMP implementations.
+    Automatic buffer sizing for SNMPv3.
+    Configurable TX buffer for SNMPv2 to match specific deployment needs.
+
