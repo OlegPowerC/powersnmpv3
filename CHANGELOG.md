@@ -19,3 +19,10 @@
 
 ## v1.2.7
 - Fix error message when received report with 1.3.6.1.6.3.15.1.1.1 (usmStatsUnsupportedSecLevels) 
+
+## v.2.9 January 27, 2026
+✨ Key Improvement  
+- Discovery Agent EngineID: Now performed in main get/set functions when proper REPORT is received
+- Automatic EngineID update without additional calls
+- 
+
