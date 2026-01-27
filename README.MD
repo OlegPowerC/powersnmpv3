@@ -4,7 +4,16 @@
 [![PowerSNMPv3 CI](https://github.com/OlegPowerC/powersnmpv3/actions/workflows/ci.yml/badge.svg)](https://github.com/OlegPowerC/powersnmpv3/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![LibHunt](https://img.shields.io/badge/LibHunt-trending-brightgreen)](https://www.libhunt.com/r/powersnmpv3)
+[![GitHub stars](https://img.shields.io/github/stars/OlegPowerC/powersnmpv3?style=social)](https://github.com/OlegPowerC/powersnmpv3/stargazers)
 
+
+📖 **Quick Links:**
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [Security Level Mismatch Handling](#security-level-mismatch-handling) 
+- [Performance](#performance)
+- [Examples](#examples)  
+---
 **Pure Go SNMP v2c/v3 Library**
 
 Author: Volkov Oleg, PowerC LLC
@@ -964,85 +973,102 @@ Key Improvement
 - Automatic EngineID update without additional calls
 
 ### Security Level Mismatch Handling
+
 PowerSNMPv3 provides RFC 3414-compliant handling of security level mismatches with optimal network efficiency and zero unnecessary retries.
+
 #### Testing Methodology
-The behavior comparison was conducted using simple SNMP Walk operations against the same SNMP agent with identical misconfigurations.  
-Test scenario: client configured with authentication (authNoPriv or authPriv), agent has the same username configured with noAuthNoPriv (no authentication).  
-This represents a common misconfiguration in production environments.  
+
+The behavior comparison was conducted using simple SNMP Walk operations against the same SNMP agent with identical misconfigurations. Test scenario: client configured with authentication (authNoPriv or authPriv), agent has the same username configured with noAuthNoPriv (no authentication). This represents a common misconfiguration in production environments.
+
 All three libraries (PowerSNMPv3, SNMP4J, gosnmp) were tested with identical parameters, and network traffic was captured via PCAP for analysis.
+
 #### The Problem
-Security level mismatches occur when the client is configured with authentication/encryption (authNoPriv or authPriv) but the agent has the same username configured with a different security level (e.g., noAuthNoPriv). According to RFC 3414 §3.2, the agent responds with a REPORT PDU containing ***usmStatsUnsupportedSecLevels*** (OID 1.3.6.1.6.3.15.1.1.1.0). Critically, the REPORT is sent without authentication or encryption, even if the request was authenticated/encrypted.  
-##### How PowerSNMPv3 Handles It
-Discovery Phase
 
-    Client → Agent: GetRequest (EngineID discovery, noAuthNoPriv)
-    Agent → Client: Report (usmStatsUnknownEngineIDs)
-    Returns: EngineID, Boots, Time
+Security level mismatches occur when the client is configured with authentication/encryption (authNoPriv or authPriv) but the agent has the same username configured with a different security level (e.g., noAuthNoPriv). According to RFC 3414 §3.2, the agent responds with a REPORT PDU containing `usmStatsUnsupportedSecLevels` (OID 1.3.6.1.6.3.15.1.1.1.0). Critically, **the REPORT is sent without authentication or encryption**, even if the request was authenticated/encrypted.
 
-Request Phase (Security Level Mismatch)
+#### How PowerSNMPv3 Handles It
 
-    Client → Agent: GetRequest/GetBulk
-    Flags: 0x05 (Auth, Reportable) or 0x07 (Auth, Priv, Reportable)
-    Auth Params: HMAC digest present
-    Priv Params: AES/DES IV (if authPriv)
+##### Discovery Phase
+```
+Client → Agent: GetRequest (EngineID discovery, noAuthNoPriv)
+Agent → Client: Report (usmStatsUnknownEngineIDs)
+  Returns: EngineID, Boots, Time
+```
 
-    Agent → Client: Report
-    Flags: 0x00 (None) ← NO authentication!
-    Report OID: 1.3.6.1.6.3.15.1.1.1.0 (usmStatsUnsupportedSecLevels)
-    Counter: Increments on each mismatch
+##### Request Phase (Security Level Mismatch)
+```
+Client → Agent: GetRequest/GetBulk
+  Flags: 0x05 (Auth, Reportable) or 0x07 (Auth, Priv, Reportable)
+  Auth Params: HMAC digest present
+  Priv Params: AES/DES IV (if authPriv)
+
+Agent → Client: Report
+  Flags: 0x00 (None) ← NO authentication!
+  Report OID: 1.3.6.1.6.3.15.1.1.1.0 (usmStatsUnsupportedSecLevels)
+  Counter: Increments on each mismatch
 
 PowerSNMPv3 Response:
+  ✓ Accepts REPORT (checks packet flags, not client config)
+  ✓ Parses report OID
+  ✓ Returns error: "unsupported security levels"
+  ✓ NO RETRY - immediate error return
+```
 
-    ✓ Accepts REPORT (checks packet flags, not client config)
-    ✓ Parses report OID
-    ✓ Returns error: "unsupported security levels"
-    ✓ NO RETRY - immediate error return
+#### RFC 3414 Compliance
 
-RFC 3414 Compliance  
 PowerSNMPv3 correctly implements RFC 3414 requirements:
 
-Accepts REPORT PDUs without authentication - Even when client expects authenticated responses,  
-No retry on configuration errors - UnsupportedSecLevels is a non-recoverable configuration error; retrying with the same credentials won't help  
-Checks packet flags, not client config - Authentication verification is based on actual packet flags, not expected client configuration  
+- **Accepts REPORT PDUs without authentication** - Even when client expects authenticated responses, REPORT PDUs with msgFlags=0x00 are accepted as valid error indications
+- **No retry on configuration errors** - UnsupportedSecLevels is a non-recoverable configuration error; retrying with the same credentials won't help
+- **Checks packet flags, not client config** - Authentication verification is based on actual packet flags, not expected client configuration
 
-Intelligent Error Classification  
-PowerSNMPv3 distinguishes between recoverable and non-recoverable errors:  
+#### Intelligent Error Classification
+
+PowerSNMPv3 distinguishes between **recoverable** and **non-recoverable** errors:
+
 **Recoverable** (auto-retry with recovery):
-- usmStatsNotInTimeWindows - Syncs time, then retries  
-- usmStatsUnknownEngineIDs - Performs discovery with key re-localization, then retries  
+- `usmStatsNotInTimeWindows` - Syncs time, then retries
+- `usmStatsUnknownEngineIDs` - Performs discovery with key re-localization, then retries
 
-**Non-recoverable** (immediate error return):  
+**Non-recoverable** (immediate error return):
+- `usmStatsUnsupportedSecLevels` - Configuration mismatch
+- `usmStatsUnknownUserNames` - Unknown user
+- `usmStatsWrongDigests` - Wrong password
+- `usmStatsDecryptionErrors` - Wrong encryption key
 
-- usmStatsUnsupportedSecLevels - Configuration mismatch
-- usmStatsUnknownUserNames - Unknown user
-- usmStatsWrongDigests - Wrong password
-- usmStatsDecryptionErrors - Wrong encryption key
+#### Comparison with Other Libraries
 
-##### Comparison with Other Libraries
+| Library      | Total Packets | Retry Count | RFC 3414 Compliant | Automatic REPORT Handling |
+|--------------|---------------|-------------|--------------------|---------------------------|
+| **PowerSNMPv3** | **4**      | **0**       | **✅**             | **✅ Yes**                |
+| SNMP4J       | 6             | 1           | ✅                 | ❌ Manual                 |
+| gosnmp       | 10            | 3           | ❌                 | ⚠️ Partial                |
 
-| Library      | Total Packets | Retry Count | RFC 3414 Compliant  | Automatic REPORT Handling |
-|--------------|---------------|-------------|---------------------|--------------------------|
-| PowerSNMPv3  | 4             | 0           | ✅                   | Yes                      |
-| SNMP4J       | 6             | 1           | ✅                   | Partial                  |
-| gosnmp       | 10            | 3           | ❌                   | Partial                  |
+**Network efficiency**: PowerSNMPv3 typically uses **60% fewer packets** than gosnmp and **33% fewer** than SNMP4J when handling misconfigurations.
 
-Network efficiency: PowerSNMPv3 typicaly uses 60% fewer packets than gosnmp and 33% fewer than SNMP4J when handling misconfigurations.  
-User Experience  
-PowerSNMPv3:  
-Error: unsupported security levels  
+#### User Experience
+
+**PowerSNMPv3:**
+```
+Error: unsupported security levels
+```
 ✅ Clear, actionable error message  
 ✅ Immediate feedback  
-✅ Obvious what to fix (check security level configuration)  
+✅ Obvious what to fix (check security level configuration)
 
-gosnmp:  
-Walk Error: incoming packet is not authentic, discarding  
+**gosnmp:**
+```
+Walk Error: incoming packet is not authentic, discarding
+```
 ❌ Confusing error message - suggests authentication problem, not configuration mismatch  
 ❌ Multiple retries before error  
-❌ Unclear root cause - could be wrong password, wrong protocol, or security level mismatch  
+❌ Unclear root cause - could be wrong password, wrong protocol, or security level mismatch
 
-SNMP4J (without manual PDU type check):  
-1.3.6.1.6.3.15.1.1.1.0 = 17  
-1.3.6.1.6.3.15.1.1.1.0 = 18  
+**SNMP4J** (without manual PDU type check):
+```
+1.3.6.1.6.3.15.1.1.1.0 = 17
+1.3.6.1.6.3.15.1.1.1.0 = 18
+```
 ❌ Returns REPORT OID and counter as data  
-❌ Requires manual PDU type checking: if (response.getType() == PDU.REPORT)  
-❌ User must interpret OID meaning and handle appropriately  
+❌ Requires manual PDU type checking: `if (response.getType() == PDU.REPORT)`  
+❌ User must interpret OID meaning and handle appropriately
