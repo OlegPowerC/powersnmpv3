@@ -20,6 +20,67 @@ import (
 	ASNber "github.com/OlegPowerC/asn1modsnmp"
 )
 
+func (Session *SNMPv3Session) embeddedDiscovery(rts SNMPv3_DecodePacket) error {
+
+	if len(rts.V3PDU.V2VarBind.VarBinds) == 0 {
+		return errors.New("discovery failed: empty VarBinds in response")
+
+	}
+
+	OID_UnknownEngineID := ASNber.ObjectIdentifier([]int{1, 3, 6, 1, 6, 3, 15, 1, 1, 4, 0})
+
+	if !rts.V3PDU.V2VarBind.VarBinds[0].RSnmpOID.Equal(OID_UnknownEngineID) {
+		return errors.New("wrong report")
+	}
+
+	if Session.Debuglevel > 199 {
+		fmt.Println("Unknown Engine ID!")
+		fmt.Println("Discovered Engine ID:", hex.EncodeToString(rts.SecuritySettings.AuthEng), "Discovered boots:", rts.SecuritySettings.Boots, "Discovered times:", rts.SecuritySettings.Time)
+	}
+
+	Session.SNMPparams.EngineID = rts.SecuritySettings.AuthEng
+	Session.SNMPparams.ContextEngineId = rts.SecuritySettings.AuthEng
+
+	// Установим MaxMessageSize в сторону агента (из того что он нам предложил)
+	if rts.GlobalData.MsgMaxSize >= MIN_ALLOWED_TX_MAXMESSAGESIZE {
+		Session.SNMPparams.txMaxMsgSize = rts.GlobalData.MsgMaxSize
+	}
+
+	if Session.SNMPparams.SecurityLevel > SECLEVEL_NOAUTH_NOPRIV {
+		Lkey := makeLocalizedKey(Session.SNMPparams.AuthKey, Session.SNMPparams.EngineID, Session.SNMPparams.AuthProtocol)
+		Session.SNMPparams.LocalizedKeyAuth = Lkey
+		atomic.OrUint32(&Session.SNMPparams.DataFlag, 1<<msgFlag_Authenticated_Bit)
+	}
+
+	if Session.SNMPparams.SecurityLevel == SECLEVEL_AUTHPRIV {
+		Lkey := makeLocalizedKey(Session.SNMPparams.PrivKey, Session.SNMPparams.EngineID, Session.SNMPparams.AuthProtocol)
+
+		switch Session.SNMPparams.PrivProtocol {
+		case PRIV_PROTOCOL_AES128:
+			if len(Lkey) > 16 {
+				Lkey = Lkey[:16] // Только AES128!
+			}
+		case PRIV_PROTOCOL_AES192, PRIV_PROTOCOL_AES256, PRIV_PROTOCOL_AES192A, PRIV_PROTOCOL_AES256A:
+			Lkey = expandPrivKey(Lkey, Session.SNMPparams.PrivProtocol, Session.SNMPparams.AuthProtocol, Session.SNMPparams.EngineID)
+		}
+
+		Session.SNMPparams.LocalizedKeyPriv = Lkey
+		Session.SNMPparams.PrivParameter = rand.Uint64()
+		Session.SNMPparams.PrivParameterDes = rand.Uint32()
+		atomic.OrUint32(&Session.SNMPparams.DataFlag, 1<<msgFlag_Encrypted_Bit)
+	}
+
+	if rts.SecuritySettings.Boots > 0 || rts.SecuritySettings.Time > 0 {
+		Session.SNMPparams.DiscoveredTimeBoots.Store(true)
+		atomic.StoreInt32(&Session.SNMPparams.RBoots, rts.SecuritySettings.Boots)
+		atomic.StoreInt32(&Session.SNMPparams.RTime, rts.SecuritySettings.Time)
+	}
+
+	Session.SNMPparams.DiscoveredEngineId.Store(true)
+
+	return nil
+}
+
 // SNMPv3_Discovery initializes SNMPv3 session with automatic EngineID discovery.
 //
 // Sends discovery GET request to `1.3.6.1.2.1.1.1.0` expecting "unknownEngineID" error.
@@ -111,73 +172,13 @@ func SNMPv3_Discovery(Ndev NetworkDevice) (SNMPsession *SNMPv3Session, err error
 	//oid := make([]int, 0)
 	Oid := []int{1, 3, 6, 1, 2, 1, 1, 1, 0}
 
-	OidVarConverted := []SNMP_Packet_V2_VarBind{{Oid, ASNber.NullRawValue}}
-
-	rts, complexerr := Session.sendSnmpv3GetRequestPrototype(OidVarConverted, SNMPv2_REQUEST_GET, 0, 0)
+	_, complexerr := Session.snmpv3_GetSet([]SNMP_Packet_V2_Decoded_VarBind{{Oid, SNMPvbNullValue}}, SNMPv2_REQUEST_GET)
 	if complexerr != nil {
 		ReturnError = complexerr
 		return Session, ReturnError
 
 	}
 
-	OID_UnknownEngineID := ASNber.ObjectIdentifier([]int{1, 3, 6, 1, 6, 3, 15, 1, 1, 4, 0})
-	// Поскольку нам не известен еще Engine ID, как и Boots и Time то мы ожидаем ошибку - Unknown Engine ID
-	// OID 1.3.6.1.6.3.15.1.1.4.0
-	// и из этого же пакеты мы его и извлекаем как и Boots и Time (но они могут быть равны нулю)
-	// если так то их мы переинициализируем после первого Get и получения ошибки NoInTime 1.3.6.1.6.3.15.1.1.2.0
-	if len(rts.V3PDU.V2VarBind.VarBinds) == 0 {
-		ReturnError = errors.New("discovery failed: empty VarBinds in response")
-		return Session, ReturnError
-	}
-	if rts.V3PDU.V2VarBind.VarBinds[0].RSnmpOID.Equal(OID_UnknownEngineID) {
-		if Session.Debuglevel > 199 {
-			fmt.Println("Unknown Engine ID!")
-			fmt.Println("Discovered Engine ID:", hex.EncodeToString(rts.SecuritySettings.AuthEng), "Discovered boots:", rts.SecuritySettings.Boots, "Discovered times:", rts.SecuritySettings.Time)
-		}
-
-		Session.SNMPparams.EngineID = rts.SecuritySettings.AuthEng
-
-		// Установим MaxMessageSize в сторону агента (из того что он нам предложил)
-		if rts.GlobalData.MsgMaxSize >= MIN_ALLOWED_TX_MAXMESSAGESIZE {
-			Session.SNMPparams.txMaxMsgSize = rts.GlobalData.MsgMaxSize
-		}
-
-		Session.SNMPparams.ContextEngineId = rts.SecuritySettings.AuthEng
-		if len(Session.SNMPparams.EngineID) > 0 {
-			Session.SNMPparams.DiscoveredEngineId.Store(true)
-			Session.SNMPparams.Username = Ndev.SNMPparameters.Username
-
-			if Session.SNMPparams.SecurityLevel > SECLEVEL_NOAUTH_NOPRIV {
-				Lkey := makeLocalizedKey(Session.SNMPparams.AuthKey, Session.SNMPparams.EngineID, Session.SNMPparams.AuthProtocol)
-				Session.SNMPparams.LocalizedKeyAuth = Lkey
-				atomic.OrUint32(&Session.SNMPparams.DataFlag, 1<<msgFlag_Authenticated_Bit)
-			}
-			if Session.SNMPparams.SecurityLevel == SECLEVEL_AUTHPRIV {
-				Lkey := makeLocalizedKey(Session.SNMPparams.PrivKey, Session.SNMPparams.EngineID, Session.SNMPparams.AuthProtocol)
-
-				switch Session.SNMPparams.PrivProtocol {
-				case PRIV_PROTOCOL_AES128:
-					if len(Lkey) > 16 {
-						Lkey = Lkey[:16]
-					} // Только AES128!
-				case PRIV_PROTOCOL_AES192, PRIV_PROTOCOL_AES256, PRIV_PROTOCOL_AES192A, PRIV_PROTOCOL_AES256A:
-					Lkey = expandPrivKey(Lkey, Session.SNMPparams.PrivProtocol, Session.SNMPparams.AuthProtocol, Session.SNMPparams.EngineID)
-				}
-
-				Session.SNMPparams.LocalizedKeyPriv = Lkey
-				Session.SNMPparams.PrivParameter = rand.Uint64()
-				Session.SNMPparams.PrivParameterDes = rand.Uint32()
-				atomic.OrUint32(&Session.SNMPparams.DataFlag, 1<<msgFlag_Encrypted_Bit)
-			}
-
-		}
-		if rts.SecuritySettings.Boots > 0 || rts.SecuritySettings.Time > 0 {
-			Session.SNMPparams.DiscoveredTimeBoots.Store(true)
-			atomic.StoreInt32(&Session.SNMPparams.RBoots, rts.SecuritySettings.Boots)
-			atomic.StoreInt32(&Session.SNMPparams.RTime, rts.SecuritySettings.Time)
-		}
-
-	}
 	return Session, nil
 }
 
@@ -546,6 +547,7 @@ func (SNMPparameters *SNMPv3Session) snmpv3_GetSet(oidValue []SNMP_Packet_V2_Dec
 		OID_DecryptionErrror := []int{1, 3, 6, 1, 6, 3, 15, 1, 1, 6, 0}
 		OID_UnknownContext := []int{1, 3, 6, 1, 6, 3, 12, 1, 5, 0}
 		OID_UnsupportedSecLevels := []int{1, 3, 6, 1, 6, 3, 15, 1, 1, 1, 0}
+		OID_UnknownEngineId := []int{1, 3, 6, 1, 6, 3, 15, 1, 1, 4, 0}
 		if rts.V3PDU.V2VarBind.VarBinds[0].RSnmpOID.Equal(OID_NoInTime) {
 			//fmt.Println("NoInTime -> Must syc time and resend")
 			RecivedBoots := rts.SecuritySettings.Boots
@@ -578,6 +580,31 @@ func (SNMPparameters *SNMPv3Session) snmpv3_GetSet(oidValue []SNMP_Packet_V2_Dec
 				return ReturnVal, ReturnError
 			}
 		}
+		if rts.V3PDU.V2VarBind.VarBinds[0].RSnmpOID.Equal(OID_UnknownEngineId) {
+			discoer := SNMPparameters.embeddedDiscovery(rts)
+			if discoer != nil {
+				return ReturnVal, fmt.Errorf("discovery failed: %v", discoer) // исправить "discovere" -> "discovery"
+			}
+
+			atomic.AddInt32(&SNMPparameters.SNMPparams.MessageId, 1)
+			atomic.AddInt32(&SNMPparameters.SNMPparams.MessageIDv2, 1)
+
+			//Повторный запрос после discovery
+			rts, complexerr = SNMPparameters.sendSnmpv3GetRequestPrototype(OidVarConverted, Request_Type, nonRepeaters, maxRepetitions)
+			if complexerr != nil {
+				//Если есть серьезная ошибка, то выходим и возвращаем ее
+				if !errors.As(complexerr, &partialerr) {
+					ReturnError = complexerr
+					return nil, ReturnError
+				}
+			}
+			if rts.MessageType == REPORT_MESSAGE {
+				ReturnError = fmt.Errorf("repeat request failed")
+				return nil, ReturnError
+			}
+			return rts.V3PDU.V2VarBind.VarBinds, nil
+
+		}
 		if rts.V3PDU.V2VarBind.VarBinds[0].RSnmpOID.Equal(OID_WrongUsername) {
 			ReturnError = errors.New("wrong username")
 			return ReturnVal, ReturnError
@@ -598,6 +625,7 @@ func (SNMPparameters *SNMPv3Session) snmpv3_GetSet(oidValue []SNMP_Packet_V2_Dec
 			ReturnError = errors.New("unsupported security levels")
 			return ReturnVal, ReturnError
 		}
+
 		ReturnError = fmt.Errorf("unknown REPORT OID: %v", rts.V3PDU.V2VarBind.VarBinds[0].RSnmpOID)
 		return ReturnVal, ReturnError
 	} else {
