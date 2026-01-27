@@ -544,7 +544,7 @@ func (SNMPparameters *SNMPv3Session) snmpv3_GetSet(oidValue []SNMP_Packet_V2_Dec
 		OID_NoInTime := []int{1, 3, 6, 1, 6, 3, 15, 1, 1, 2, 0}
 		OID_WrongUsername := []int{1, 3, 6, 1, 6, 3, 15, 1, 1, 3, 0}
 		OID_WrongDigest := []int{1, 3, 6, 1, 6, 3, 15, 1, 1, 5, 0}
-		OID_DecryptionErrror := []int{1, 3, 6, 1, 6, 3, 15, 1, 1, 6, 0}
+		OID_DecryptionError := []int{1, 3, 6, 1, 6, 3, 15, 1, 1, 6, 0}
 		OID_UnknownContext := []int{1, 3, 6, 1, 6, 3, 12, 1, 5, 0}
 		OID_UnsupportedSecLevels := []int{1, 3, 6, 1, 6, 3, 15, 1, 1, 1, 0}
 		OID_UnknownEngineId := []int{1, 3, 6, 1, 6, 3, 15, 1, 1, 4, 0}
@@ -558,10 +558,10 @@ func (SNMPparameters *SNMPv3Session) snmpv3_GetSet(oidValue []SNMP_Packet_V2_Dec
 				SNMPparameters.SNMPparams.DiscoveredTimeBoots.Store(true)
 				atomic.StoreInt32(&SNMPparameters.SNMPparams.RBoots, RecivedBoots)
 				atomic.StoreInt32(&SNMPparameters.SNMPparams.RTime, RecivedTime)
-				atomic.AddInt32(&SNMPparameters.SNMPparams.MessageId, 1)
-				atomic.AddInt32(&SNMPparameters.SNMPparams.MessageIDv2, 1)
-				//Повторный запрос после синхронизации
-				rts, complexerr = SNMPparameters.sendSnmpv3GetRequestPrototype(OidVarConverted, Request_Type, nonRepeaters, maxRepetitions)
+				//atomic.AddInt32(&SNMPparameters.SNMPparams.MessageId, 1)
+				//atomic.AddInt32(&SNMPparameters.SNMPparams.MessageIDv2, 1)
+
+				rts, complexerr = SNMPparameters.sendDataAfterReport(OidVarConverted, Request_Type, nonRepeaters, maxRepetitions)
 				if complexerr != nil {
 					//Если есть серьезная ошибка, то выходим и возвращаем ее
 					if !errors.As(complexerr, &partialerr) {
@@ -569,10 +569,24 @@ func (SNMPparameters *SNMPv3Session) snmpv3_GetSet(oidValue []SNMP_Packet_V2_Dec
 						return nil, ReturnError
 					}
 				}
-				if rts.MessageType == REPORT_MESSAGE {
-					ReturnError = fmt.Errorf("repeat request failed")
-					return nil, ReturnError
-				}
+				/*
+						//Повторный запрос после синхронизации
+						rts, complexerr = SNMPparameters.sendSnmpv3GetRequestPrototype(OidVarConverted, Request_Type, nonRepeaters, maxRepetitions)
+						if complexerr != nil {
+							//Если есть серьезная ошибка, то выходим и возвращаем ее
+							if !errors.As(complexerr, &partialerr) {
+								ReturnError = complexerr
+								return nil, ReturnError
+							}
+						}
+
+
+					if rts.MessageType == REPORT_MESSAGE {
+						ReturnError = fmt.Errorf("repeat request failed")
+						return nil, ReturnError
+					}
+
+				*/
 				return rts.V3PDU.V2VarBind.VarBinds, nil
 
 			} else {
@@ -586,11 +600,7 @@ func (SNMPparameters *SNMPv3Session) snmpv3_GetSet(oidValue []SNMP_Packet_V2_Dec
 				return ReturnVal, fmt.Errorf("discovery failed: %v", discoer) // исправить "discovere" -> "discovery"
 			}
 
-			atomic.AddInt32(&SNMPparameters.SNMPparams.MessageId, 1)
-			atomic.AddInt32(&SNMPparameters.SNMPparams.MessageIDv2, 1)
-
-			//Повторный запрос после discovery
-			rts, complexerr = SNMPparameters.sendSnmpv3GetRequestPrototype(OidVarConverted, Request_Type, nonRepeaters, maxRepetitions)
+			rts, complexerr = SNMPparameters.sendDataAfterReport(OidVarConverted, Request_Type, nonRepeaters, maxRepetitions)
 			if complexerr != nil {
 				//Если есть серьезная ошибка, то выходим и возвращаем ее
 				if !errors.As(complexerr, &partialerr) {
@@ -598,10 +608,27 @@ func (SNMPparameters *SNMPv3Session) snmpv3_GetSet(oidValue []SNMP_Packet_V2_Dec
 					return nil, ReturnError
 				}
 			}
-			if rts.MessageType == REPORT_MESSAGE {
-				ReturnError = fmt.Errorf("repeat request failed")
-				return nil, ReturnError
-			}
+			/*
+					atomic.AddInt32(&SNMPparameters.SNMPparams.MessageId, 1)
+					atomic.AddInt32(&SNMPparameters.SNMPparams.MessageIDv2, 1)
+
+					//Повторный запрос после discovery
+					rts, complexerr = SNMPparameters.sendSnmpv3GetRequestPrototype(OidVarConverted, Request_Type, nonRepeaters, maxRepetitions)
+					if complexerr != nil {
+						//Если есть серьезная ошибка, то выходим и возвращаем ее
+						if !errors.As(complexerr, &partialerr) {
+							ReturnError = complexerr
+							return nil, ReturnError
+						}
+					}
+
+
+				if rts.MessageType == REPORT_MESSAGE {
+					ReturnError = fmt.Errorf("repeat request failed")
+					return nil, ReturnError
+				}
+
+			*/
 			return rts.V3PDU.V2VarBind.VarBinds, nil
 
 		}
@@ -613,7 +640,7 @@ func (SNMPparameters *SNMPv3Session) snmpv3_GetSet(oidValue []SNMP_Packet_V2_Dec
 			ReturnError = errors.New("wrong authkey")
 			return ReturnVal, ReturnError
 		}
-		if rts.V3PDU.V2VarBind.VarBinds[0].RSnmpOID.Equal(OID_DecryptionErrror) {
+		if rts.V3PDU.V2VarBind.VarBinds[0].RSnmpOID.Equal(OID_DecryptionError) {
 			ReturnError = errors.New("decryption error")
 			return ReturnVal, ReturnError
 		}
@@ -632,6 +659,57 @@ func (SNMPparameters *SNMPv3Session) snmpv3_GetSet(oidValue []SNMP_Packet_V2_Dec
 		ReturnVal = rts.V3PDU.V2VarBind.VarBinds
 	}
 	return ReturnVal, ReturnError
+}
+
+func (SNMPparameters *SNMPv3Session) sendDataAfterReport(OidVarConverted []SNMP_Packet_V2_VarBind, Request_Type int, nonRepeaters, maxRepetitions int32) (rdata SNMPv3_DecodePacket, rerr error) {
+	atomic.AddInt32(&SNMPparameters.SNMPparams.MessageId, 1)
+	atomic.AddInt32(&SNMPparameters.SNMPparams.MessageIDv2, 1)
+	var partialerr SNMPne_Errors
+	//Повторный запрос после discovery
+	rts, complexerr := SNMPparameters.sendSnmpv3GetRequestPrototype(OidVarConverted, Request_Type, nonRepeaters, maxRepetitions)
+	if complexerr != nil {
+		//Если есть серьезная ошибка, то выходим и возвращаем ее
+		if !errors.As(complexerr, &partialerr) {
+			return SNMPv3_DecodePacket{}, complexerr
+		}
+	}
+	if rts.MessageType == REPORT_MESSAGE {
+		if len(rts.V3PDU.V2VarBind.VarBinds) == 0 {
+			return SNMPv3_DecodePacket{}, errors.New("retry failed: empty report")
+		}
+		OID_NoInTime := []int{1, 3, 6, 1, 6, 3, 15, 1, 1, 2, 0}
+		OID_WrongUsername := []int{1, 3, 6, 1, 6, 3, 15, 1, 1, 3, 0}
+		OID_WrongDigest := []int{1, 3, 6, 1, 6, 3, 15, 1, 1, 5, 0}
+		OID_DecryptionError := []int{1, 3, 6, 1, 6, 3, 15, 1, 1, 6, 0}
+		OID_UnknownContext := []int{1, 3, 6, 1, 6, 3, 12, 1, 5, 0}
+		OID_UnsupportedSecLevels := []int{1, 3, 6, 1, 6, 3, 15, 1, 1, 1, 0}
+		OID_UnknownEngineId := []int{1, 3, 6, 1, 6, 3, 15, 1, 1, 4, 0}
+		if rts.V3PDU.V2VarBind.VarBinds[0].RSnmpOID.Equal(OID_WrongUsername) {
+			return SNMPv3_DecodePacket{}, errors.New("wrong username")
+		}
+		if rts.V3PDU.V2VarBind.VarBinds[0].RSnmpOID.Equal(OID_WrongDigest) {
+			return SNMPv3_DecodePacket{}, errors.New("wrong authkey")
+		}
+		if rts.V3PDU.V2VarBind.VarBinds[0].RSnmpOID.Equal(OID_DecryptionError) {
+			return SNMPv3_DecodePacket{}, errors.New("decryption error")
+		}
+		if rts.V3PDU.V2VarBind.VarBinds[0].RSnmpOID.Equal(OID_UnknownContext) {
+			return SNMPv3_DecodePacket{}, errors.New("unknown context")
+		}
+		if rts.V3PDU.V2VarBind.VarBinds[0].RSnmpOID.Equal(OID_NoInTime) {
+			return SNMPv3_DecodePacket{}, errors.New("retry failed: no in time twice")
+		}
+		if rts.V3PDU.V2VarBind.VarBinds[0].RSnmpOID.Equal(OID_UnknownEngineId) {
+
+			return SNMPv3_DecodePacket{}, errors.New("retry failed: unknown engine id twice")
+		}
+		if rts.V3PDU.V2VarBind.VarBinds[0].RSnmpOID.Equal(OID_UnsupportedSecLevels) {
+			return SNMPv3_DecodePacket{}, errors.New("unsupported security levels")
+		}
+
+		return SNMPv3_DecodePacket{}, fmt.Errorf("retry failed: unknown REPORT OID: %v", rts.V3PDU.V2VarBind.VarBinds[0].RSnmpOID)
+	}
+	return rts, complexerr
 }
 
 // SNMP_Walk performs complete SNMP WALK starting from base OID using GETNEXT.
