@@ -957,3 +957,92 @@ Impact
     Automatic buffer sizing for SNMPv3.
     Configurable TX buffer for SNMPv2 to match specific deployment needs.
 
+### v.2.9 January 27, 2026
+
+Key Improvement
+- Discovery Agent EngineID: Now performed in main get/set functions when proper REPORT is received
+- Automatic EngineID update without additional calls
+
+### Security Level Mismatch Handling
+PowerSNMPv3 provides RFC 3414-compliant handling of security level mismatches with optimal network efficiency and zero unnecessary retries.
+#### Testing Methodology
+The behavior comparison was conducted using simple SNMP Walk operations against the same SNMP agent with identical misconfigurations.  
+Test scenario: client configured with authentication (authNoPriv or authPriv), agent has the same username configured with noAuthNoPriv (no authentication).  
+This represents a common misconfiguration in production environments.  
+All three libraries (PowerSNMPv3, SNMP4J, gosnmp) were tested with identical parameters, and network traffic was captured via PCAP for analysis.
+#### The Problem
+Security level mismatches occur when the client is configured with authentication/encryption (authNoPriv or authPriv) but the agent has the same username configured with a different security level (e.g., noAuthNoPriv). According to RFC 3414 §3.2, the agent responds with a REPORT PDU containing ***usmStatsUnsupportedSecLevels*** (OID 1.3.6.1.6.3.15.1.1.1.0). Critically, the REPORT is sent without authentication or encryption, even if the request was authenticated/encrypted.  
+##### How PowerSNMPv3 Handles It
+Discovery Phase
+
+    Client → Agent: GetRequest (EngineID discovery, noAuthNoPriv)
+    Agent → Client: Report (usmStatsUnknownEngineIDs)
+    Returns: EngineID, Boots, Time
+
+Request Phase (Security Level Mismatch)
+
+    Client → Agent: GetRequest/GetBulk
+    Flags: 0x05 (Auth, Reportable) or 0x07 (Auth, Priv, Reportable)
+    Auth Params: HMAC digest present
+    Priv Params: AES/DES IV (if authPriv)
+
+    Agent → Client: Report
+    Flags: 0x00 (None) ← NO authentication!
+    Report OID: 1.3.6.1.6.3.15.1.1.1.0 (usmStatsUnsupportedSecLevels)
+    Counter: Increments on each mismatch
+
+PowerSNMPv3 Response:
+
+    ✓ Accepts REPORT (checks packet flags, not client config)
+    ✓ Parses report OID
+    ✓ Returns error: "unsupported security levels"
+    ✓ NO RETRY - immediate error return
+
+RFC 3414 Compliance  
+PowerSNMPv3 correctly implements RFC 3414 requirements:
+
+Accepts REPORT PDUs without authentication - Even when client expects authenticated responses,  
+No retry on configuration errors - UnsupportedSecLevels is a non-recoverable configuration error; retrying with the same credentials won't help  
+Checks packet flags, not client config - Authentication verification is based on actual packet flags, not expected client configuration  
+
+Intelligent Error Classification  
+PowerSNMPv3 distinguishes between recoverable and non-recoverable errors:  
+**Recoverable** (auto-retry with recovery):
+- usmStatsNotInTimeWindows - Syncs time, then retries  
+- usmStatsUnknownEngineIDs - Performs discovery with key re-localization, then retries  
+
+**Non-recoverable** (immediate error return):  
+
+- usmStatsUnsupportedSecLevels - Configuration mismatch
+- usmStatsUnknownUserNames - Unknown user
+- usmStatsWrongDigests - Wrong password
+- usmStatsDecryptionErrors - Wrong encryption key
+
+##### Comparison with Other Libraries
+
+| Library      | Total Packets | Retry Count | RFC 3414 Compliant  | Automatic REPORT Handling |
+|--------------|---------------|-------------|---------------------|--------------------------|
+| PowerSNMPv3  | 4             | 0           | ✅                   | Yes                      |
+| SNMP4J       | 6             | 1           | ✅                   | Partial                  |
+| gosnmp       | 10            | 3           | ❌                   | Partial                  |
+
+Network efficiency: PowerSNMPv3 typicaly uses 60% fewer packets than gosnmp and 33% fewer than SNMP4J when handling misconfigurations.  
+User Experience  
+PowerSNMPv3:  
+Error: unsupported security levels  
+✅ Clear, actionable error message  
+✅ Immediate feedback  
+✅ Obvious what to fix (check security level configuration)  
+
+gosnmp:  
+Walk Error: incoming packet is not authentic, discarding  
+❌ Confusing error message - suggests authentication problem, not configuration mismatch  
+❌ Multiple retries before error  
+❌ Unclear root cause - could be wrong password, wrong protocol, or security level mismatch  
+
+SNMP4J (without manual PDU type check):  
+1.3.6.1.6.3.15.1.1.1.0 = 17  
+1.3.6.1.6.3.15.1.1.1.0 = 18  
+❌ Returns REPORT OID and counter as data  
+❌ Requires manual PDU type checking: if (response.getType() == PDU.REPORT)  
+❌ User must interpret OID meaning and handle appropriately  
