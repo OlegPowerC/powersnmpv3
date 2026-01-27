@@ -412,7 +412,6 @@ func (SNMPparameters *SNMPv3Session) sendSnmpv3GetRequestPrototype(oidValue []SN
 	p := make([]byte, SNMPparameters.SNMPparams.rxbuffersize)
 
 	writedn := 0
-	SendRequest := true
 	for itertry := 0; itertry < SNMPparameters.SNMPparams.RetryCount; itertry++ {
 		//Установим таймаут на чтение
 		TMread := time.Duration(SNMPparameters.SNMPparams.TimeoutBtwRepeat*(itertry+1)) * time.Millisecond
@@ -423,22 +422,19 @@ func (SNMPparameters *SNMPv3Session) sendSnmpv3GetRequestPrototype(oidValue []SN
 		}
 
 		//Нужно послать запрос
-		if SendRequest {
-			//Таймаут на запись данных
-			TMwrite := time.Duration(SNMPparameters.SNMPparams.TimeoutBtwRepeat) * time.Millisecond
-			wdeadLine := time.Now().Add(TMwrite)
-			errread = SNMPparameters.conn.SetWriteDeadline(wdeadLine)
-			if errread != nil {
-				continue
-			}
-			writedn, errread = SNMPparameters.conn.Write(SNMPv3Packet)
-			if errread != nil || writedn != len(SNMPv3Packet) {
-				continue
-			}
-			//Запрос послан успешно
-			//Снимаем флаг посылки
-			SendRequest = false
+
+		//Таймаут на запись данных
+		TMwrite := time.Duration(SNMPparameters.SNMPparams.TimeoutBtwRepeat) * time.Millisecond
+		wdeadLine := time.Now().Add(TMwrite)
+		errread = SNMPparameters.conn.SetWriteDeadline(wdeadLine)
+		if errread != nil {
+			continue
 		}
+		writedn, errread = SNMPparameters.conn.Write(SNMPv3Packet)
+		if errread != nil || writedn != len(SNMPv3Packet) {
+			continue
+		}
+		//Запрос послан успешно
 
 		for time.Now().Before(rdeadLine) {
 			//Ожидаем данные не позднее Текущее время плюс rdeadLine
@@ -471,8 +467,6 @@ func (SNMPparameters *SNMPv3Session) sendSnmpv3GetRequestPrototype(oidValue []SN
 					//Ошибка как net.Error
 					if nerror.Timeout() {
 						//Истек таймаут
-						//Установим флаг повторной посылки
-						SendRequest = true
 						//И выход во внешний цикл
 						break
 					} else {
@@ -488,7 +482,6 @@ func (SNMPparameters *SNMPv3Session) sendSnmpv3GetRequestPrototype(oidValue []SN
 		//Внутренний цикл завершен но ошибок нет
 		if errread == nil {
 			errread = fmt.Errorf("timeout waiting for correct SNMP response")
-			SendRequest = true
 		}
 
 	}
@@ -558,8 +551,6 @@ func (SNMPparameters *SNMPv3Session) snmpv3_GetSet(oidValue []SNMP_Packet_V2_Dec
 				SNMPparameters.SNMPparams.DiscoveredTimeBoots.Store(true)
 				atomic.StoreInt32(&SNMPparameters.SNMPparams.RBoots, RecivedBoots)
 				atomic.StoreInt32(&SNMPparameters.SNMPparams.RTime, RecivedTime)
-				//atomic.AddInt32(&SNMPparameters.SNMPparams.MessageId, 1)
-				//atomic.AddInt32(&SNMPparameters.SNMPparams.MessageIDv2, 1)
 
 				rts, complexerr = SNMPparameters.sendDataAfterReport(OidVarConverted, Request_Type, nonRepeaters, maxRepetitions)
 				if complexerr != nil {
@@ -569,24 +560,6 @@ func (SNMPparameters *SNMPv3Session) snmpv3_GetSet(oidValue []SNMP_Packet_V2_Dec
 						return nil, ReturnError
 					}
 				}
-				/*
-						//Повторный запрос после синхронизации
-						rts, complexerr = SNMPparameters.sendSnmpv3GetRequestPrototype(OidVarConverted, Request_Type, nonRepeaters, maxRepetitions)
-						if complexerr != nil {
-							//Если есть серьезная ошибка, то выходим и возвращаем ее
-							if !errors.As(complexerr, &partialerr) {
-								ReturnError = complexerr
-								return nil, ReturnError
-							}
-						}
-
-
-					if rts.MessageType == REPORT_MESSAGE {
-						ReturnError = fmt.Errorf("repeat request failed")
-						return nil, ReturnError
-					}
-
-				*/
 				return rts.V3PDU.V2VarBind.VarBinds, nil
 
 			} else {
@@ -608,27 +581,7 @@ func (SNMPparameters *SNMPv3Session) snmpv3_GetSet(oidValue []SNMP_Packet_V2_Dec
 					return nil, ReturnError
 				}
 			}
-			/*
-					atomic.AddInt32(&SNMPparameters.SNMPparams.MessageId, 1)
-					atomic.AddInt32(&SNMPparameters.SNMPparams.MessageIDv2, 1)
 
-					//Повторный запрос после discovery
-					rts, complexerr = SNMPparameters.sendSnmpv3GetRequestPrototype(OidVarConverted, Request_Type, nonRepeaters, maxRepetitions)
-					if complexerr != nil {
-						//Если есть серьезная ошибка, то выходим и возвращаем ее
-						if !errors.As(complexerr, &partialerr) {
-							ReturnError = complexerr
-							return nil, ReturnError
-						}
-					}
-
-
-				if rts.MessageType == REPORT_MESSAGE {
-					ReturnError = fmt.Errorf("repeat request failed")
-					return nil, ReturnError
-				}
-
-			*/
 			return rts.V3PDU.V2VarBind.VarBinds, nil
 
 		}
