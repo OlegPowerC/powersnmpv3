@@ -545,6 +545,7 @@ func (SNMPparameters *SNMPv3Session) snmpv3_GetSet(oidValue []SNMP_Packet_V2_Dec
 		OID_WrongDigest := []int{1, 3, 6, 1, 6, 3, 15, 1, 1, 5, 0}
 		OID_DecryptionErrror := []int{1, 3, 6, 1, 6, 3, 15, 1, 1, 6, 0}
 		OID_UnknownContext := []int{1, 3, 6, 1, 6, 3, 12, 1, 5, 0}
+		OID_UnsupportedSecLevels := []int{1, 3, 6, 1, 6, 3, 15, 1, 1, 1, 0}
 		if rts.V3PDU.V2VarBind.VarBinds[0].RSnmpOID.Equal(OID_NoInTime) {
 			//fmt.Println("NoInTime -> Must syc time and resend")
 			RecivedBoots := rts.SecuritySettings.Boots
@@ -591,6 +592,10 @@ func (SNMPparameters *SNMPv3Session) snmpv3_GetSet(oidValue []SNMP_Packet_V2_Dec
 		}
 		if rts.V3PDU.V2VarBind.VarBinds[0].RSnmpOID.Equal(OID_UnknownContext) {
 			ReturnError = errors.New("unknown context")
+			return ReturnVal, ReturnError
+		}
+		if rts.V3PDU.V2VarBind.VarBinds[0].RSnmpOID.Equal(OID_UnsupportedSecLevels) {
+			ReturnError = errors.New("unsupported security levels")
 			return ReturnVal, ReturnError
 		}
 		ReturnError = fmt.Errorf("unknown REPORT OID: %v", rts.V3PDU.V2VarBind.VarBinds[0].RSnmpOID)
