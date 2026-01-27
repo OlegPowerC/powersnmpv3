@@ -16,3 +16,6 @@
 - Set SNMPv2 RX buffer size to 65535 bytes
 - Set SNMPv3 RX buffer size equal to MaxMsgSize
 - Discover MaxMsgSize from the agent and avoid sending data exceeding this limit
+
+## v1.2.7
+- Fix error message when received report with 1.3.6.1.6.3.15.1.1.1 (usmStatsUnsupportedSecLevels) 
