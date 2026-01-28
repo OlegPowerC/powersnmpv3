@@ -735,6 +735,259 @@ for _, vb := range results {
 }
 ```
 
+### gosnmp and PowerSNMPv3 difference
+
+#### Gosnmp:
+
+**Sample code:**
+```
+    fmt.Println("=== MULTI GET ===")
+    oids := []string{
+    "1.3.6.1.2.1.1.5.0",   // sysName
+    "1.3.6.1.2.1.1.6.0",   // sysLocation
+    "1.3.6.1.2.1.1.99.0",  // invalid oid (will be noSuchObject)
+    "1.3.6.1.2.1.1.100.0", // invalid oid (will be noSuchObject)
+    }
+
+	result, err := params.Get(oids)
+	fmt.Println("--- Check errors ---")
+	if err != nil {
+		fmt.Printf("MultiGet ERROR: %v\n", err)
+	} else {
+		fmt.Println("- NO Errors -")
+		fmt.Println("--- Print result ---")
+		for i, pdu := range result.Variables {
+			fmt.Printf("OID[%d]: %s = ", i, pdu.Name)
+			switch pdu.Type {
+			case gosnmp.OctetString:
+				fmt.Printf("%s\n", string(pdu.Value.([]byte)))
+			case gosnmp.NoSuchObject:
+				fmt.Printf("NoSuchObject\n")
+			default:
+				fmt.Printf("%v (%s)\n", pdu.Value, pdu.Type)
+			}
+		}
+	}
+
+	fmt.Println("=== MULTI SET ===")
+	vars := []gosnmp.SnmpPDU{
+		{
+			Name:  "1.3.6.1.2.1.1.6.0", // sysLocation
+			Type:  gosnmp.OctetString,
+			Value: []byte("Test from gosnmp"),
+		},
+		{
+			Name:  "1.3.6.1.2.1.1.99.0", // Wrong OID
+			Type:  gosnmp.OctetString,
+			Value: []byte("Should fail"),
+		},
+	}
+
+	resultSet, err := params.Set(vars)
+	fmt.Println("--- Check errors ---")
+	if err != nil {
+		fmt.Printf("MultiSet ERROR: %v\n", err)
+	} else {
+		fmt.Println("- NO Errors -")
+		fmt.Println("--- Print result ---")
+		for i, pdu := range resultSet.Variables {
+			fmt.Printf("OID[%d]: %s = ", i, pdu.Name)
+			switch pdu.Type {
+			case gosnmp.OctetString:
+				fmt.Printf("%s\n", string(pdu.Value.([]byte)))
+			case gosnmp.NoSuchObject:
+				fmt.Printf("NoSuchObject\n")
+			default:
+				fmt.Printf("%v (%s)\n", pdu.Value, pdu.Type)
+			}
+		}
+	}
+
+	fmt.Println("explicit check errors (resultSet.Error,resultSet.ErrorIndex)", resultSet.Error, resultSet.ErrorIndex)
+
+	fmt.Println("=== Get 1.3.6.1.2.1.1.6.0 ===")
+	oids = []string{
+		"1.3.6.1.2.1.1.6.0", // sysLocation
+	}
+
+	result, err = params.Get(oids)
+	if err != nil {
+		fmt.Printf("Get ERROR: %v\n", err)
+	} else {
+		for i, pdu := range result.Variables {
+			fmt.Println("- NO Errors -")
+			fmt.Println("--- Print result ---")
+			fmt.Printf("OID[%d]: %s = ", i, pdu.Name)
+			switch pdu.Type {
+			case gosnmp.OctetString:
+				fmt.Printf("%s\n", string(pdu.Value.([]byte)))
+			case gosnmp.NoSuchObject:
+				fmt.Printf("NoSuchObject\n")
+			default:
+				fmt.Printf("%v (%s)\n", pdu.Value, pdu.Type)
+			}
+		}
+	}
+```
+
+Result:
+
+```
+=== MULTI GET ===
+--- Check errors ---
+- NO Errors -
+  --- Print result ---
+  OID[0]: .1.3.6.1.2.1.1.5.0 = powercsw01.powerc
+  OID[1]: .1.3.6.1.2.1.1.6.0 = Test 6.0
+  OID[2]: .1.3.6.1.2.1.1.99.0 = NoSuchObject
+  OID[3]: .1.3.6.1.2.1.1.100.0 = NoSuchObject
+  === MULTI SET ===
+  --- Check errors ---
+- NO Errors -
+  --- Print result ---
+  OID[0]: .1.3.6.1.2.1.1.6.0 = Test from gosnmp
+  OID[1]: .1.3.6.1.2.1.1.99.0 = Should fail
+  explicit check errors (resultSet.Error,resultSet.ErrorIndex) NoCreation 2
+  === Get 1.3.6.1.2.1.1.6.0 ===
+- NO Errors -
+  --- Print result ---
+  OID[0]: .1.3.6.1.2.1.1.6.0 = Test 6.0
+```
+
+#### PowerSNMPv3:
+
+Sample code:
+```
+fmt.Println("=== MULTI GET ===")
+OidsStrings := []string{"1.3.6.1.2.1.1.6.0", "1.3.6.1.2.1.1.99.0", "1.3.6.1.2.1.1.5.0", "1.3.6.1.2.1.1.100.0"}
+OidsConverted := []PowerSNMP.SNMP_Packet_V2_Decoded_VarBind{}
+
+	for _, OidSting := range OidsStrings {
+		Ioid, IoidErr := PowerSNMP.Convert_OID_StringToIntArray_RAW(OidSting)
+		if IoidErr != nil {
+			fmt.Println(IoidErr)
+			return
+		}
+		OidsConverted = append(OidsConverted, PowerSNMP.SNMP_Packet_V2_Decoded_VarBind{Ioid, PowerSNMP.SNMPvbNullValue})
+	}
+	GetRes2, verr2 := Ssess.SNMP_GetMulti(OidsConverted)
+
+	fmt.Println("--- Check errors ---")
+	if verr2 != nil {
+		snmpErr, commonErr := PowerSNMP.ParseError(verr2)
+		if commonErr != nil {
+			// Network error, cryptography, etc.
+			fmt.Println("Network/system error:", commonErr)
+		}
+
+		if snmpErr.IsFatal {
+			// Fatal SNMP error
+			fmt.Println("Fatal SNMP error, results are not available")
+			for _, descr := range snmpErr.Oids {
+				fmt.Println("Error description:", descr.ErrorDescription, descr)
+			}
+		}
+
+		// Partial error - results are available!
+		fmt.Printf("Partial error, %d OIDs failed:", len(snmpErr.Oids))
+		for _, oidErr := range snmpErr.Oids {
+			fmt.Printf("  | %s", oidErr.ErrorDescription)
+		}
+		fmt.Println("")
+	} else {
+		fmt.Println("- NO Errors -")
+	}
+
+	fmt.Println("--- Print result ---")
+	for _, wl := range GetRes2 {
+		fmt.Println(PowerSNMP.Convert_OID_IntArrayToString_RAW(wl.RSnmpOID), "=", PowerSNMP.Convert_Variable_To_String(wl.RSnmpVar), ":", PowerSNMP.Convert_ClassTag_to_String(wl.RSnmpVar))
+	}
+
+	fmt.Println("=== MULTI SET ===")
+	VarData := []PowerSNMP.SNMPVar{PowerSNMP.SetSNMPVar_OctetString("Test 6.0"), PowerSNMP.SetSNMPVar_OctetString("Test 99.0"), PowerSNMP.SetSNMPVar_OctetString("Test 5.0")}
+	SetStringOids := []string{"1.3.6.1.2.1.1.6.0", "1.3.6.1.2.1.1.99.0", "1.3.6.1.2.1.1.5.0"}
+	SetDataVB := []PowerSNMP.SNMP_Packet_V2_Decoded_VarBind{}
+	if len(VarData) == len(SetStringOids) {
+		for VdataInd, StoidS := range SetStringOids {
+			IoidS, IoidErrS := PowerSNMP.Convert_OID_StringToIntArray_RAW(StoidS)
+			if IoidErrS != nil {
+				fmt.Println(IoidErrS)
+				return
+			}
+			SetDataVB = append(SetDataVB, PowerSNMP.SNMP_Packet_V2_Decoded_VarBind{IoidS, VarData[VdataInd]})
+		}
+	} else {
+		fmt.Println("Mismatch oids and data")
+		return
+	}
+
+	sdata, verres3 := Ssess.SNMP_SetMulti(SetDataVB)
+	fmt.Println("--- Check errors ---")
+	if verres3 != nil {
+		snmpErr, commonErr := PowerSNMP.ParseError(verres3)
+		if commonErr != nil {
+			// Network error, cryptography, etc.
+			fmt.Println("Network/system error:", commonErr)
+		}
+		if snmpErr.IsFatal {
+			// Fatal SNMP error
+			fmt.Println("Fatal SNMP error, results are not available")
+			for _, descr := range snmpErr.Oids {
+				fmt.Println("Error description:", descr.ErrorDescription)
+			}
+		} else {
+			// Partial error - results are available!
+			fmt.Printf("Partial error, %d OIDs failed:", len(snmpErr.Oids))
+			for _, oidErr := range snmpErr.Oids {
+				fmt.Printf("  | %s", oidErr.ErrorDescription)
+			}
+		}
+
+		fmt.Println("")
+	} else {
+		fmt.Println("- NO Errors -")
+	}
+
+	fmt.Println("--- Print result ---")
+	for _, wl := range sdata {
+		fmt.Println(PowerSNMP.Convert_OID_IntArrayToString_RAW(wl.RSnmpOID), "=", PowerSNMP.Convert_Variable_To_String(wl.RSnmpVar), ":", PowerSNMP.Convert_ClassTag_to_String(wl.RSnmpVar))
+	}
+```
+
+Result:
+```
+=== MULTI GET ===
+--- Check errors ---
+Partial error, 2 OIDs failed:  | 1.3.6.1.2.1.1.99.0 (status=128): NoSuchObject  | 1.3.6.1.2.1.1.100.0 (status=128): NoSuchObject
+--- Print result ---
+1.3.6.1.2.1.1.6.0 = Test 6.0 : Universal OCTET STRING
+1.3.6.1.2.1.1.5.0 = powercsw01.powerc : Universal OCTET STRING
+=== MULTI SET ===
+--- Check errors ---
+Fatal SNMP error, results are not available
+Error description: 1.3.6.1.2.1.1.99.0 (status=11): CannotCreateVariable
+
+--- Print result ---
+```
+
+#### Key difference:
+
+In **Get** operation:  
+
+- **gosnmp** returns all VarBinds in result and the user must check for noSuchObject manually
+
+- **PowerSNMPv3** returns a partial error which contains information about which OIDs are noSuchObject
+and returns result without failed OIDs
+
+In **Set** operation:  
+
+- gosnmp returns result with VarBinds which it tried to set and no error
+Result may be incorrectly interpreted by user.
+User must explicitly check resultSet.Error,resultSet.ErrorIndex to detect error
+
+- PowerSNMPv3 returns a fatal error which contains the first failed OID and type of error
+and no result. It is really a fatal error, because the SET operation is atomic
+
 ---
 
 ## Examples
