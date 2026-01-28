@@ -12,6 +12,7 @@
 - [Installation](#installation)
 - [Quick Start](#quick-start)
 - [Security Level Mismatch Handling](#security-level-mismatch-handling) 
+- [Error Handling](#Error Handling)
 - [Performance](#performance)
 - [Examples](#examples)  
 ---
