@@ -3,8 +3,9 @@
 // PowerSNMPv3 - SNMP library for Go
 // Автор: Волков Олег
 // Author: Volkov Oleg
-// License: MIT (commercial version with support available)
-// Лицензия: MIT (доступна коммерческая версия с поддержкой)
+// License: MIT
+// Лицензия: MIT
+// Commercial support and custom development available.
 package PowerSNMPv3
 
 import (

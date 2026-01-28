@@ -18,8 +18,9 @@
 **Pure Go SNMP v2c/v3 Library**
 
 Author: Volkov Oleg
-License: MIT (commercial version with support available)
 Contact: oleg.powerc@gmail.com
+License: MIT
+Commercial support and custom development available.
 
 ---
 

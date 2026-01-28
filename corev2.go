@@ -1,8 +1,9 @@
 // PowerSNMPv3 - SNMP library for Go
 // Автор: Волков Олег
 // Author: Volkov Oleg
-// License: MIT (commercial version with support available)
-// Лицензия: MIT (доступна коммерческая версия с поддержкой)
+// License: MIT
+// Лицензия: MIT
+// Commercial support and custom development available.
 package PowerSNMPv3
 
 import (
@@ -378,7 +379,6 @@ func (SNMPparameters *SNMPv3Session) sendSnmpv2GetRequestPrototype(oidValue []SN
 
 	//Делаем несколько попыток получения данных
 	writedn := 0
-	SendRequest := true
 	for itertry := 0; itertry < SNMPparameters.SNMPparams.RetryCount; itertry++ {
 		//Установим таймаут на чтение
 		//Установим таймаут на чтение
@@ -390,22 +390,18 @@ func (SNMPparameters *SNMPv3Session) sendSnmpv2GetRequestPrototype(oidValue []SN
 		}
 
 		//Нужно послать запрос
-		if SendRequest {
-			//Таймаут на запись данных
-			TMwrite := time.Duration(SNMPparameters.SNMPparams.TimeoutBtwRepeat) * time.Millisecond
-			wdeadLine := time.Now().Add(TMwrite)
-			errread = SNMPparameters.conn.SetWriteDeadline(wdeadLine)
-			if errread != nil {
-				continue
-			}
-			writedn, errread = SNMPparameters.conn.Write(MS)
-			if errread != nil || writedn != len(MS) {
-				continue
-			}
-			//Запрос послан успешно
-			//сбросим флаг посылки
-			SendRequest = false
+		//Таймаут на запись данных
+		TMwrite := time.Duration(SNMPparameters.SNMPparams.TimeoutBtwRepeat) * time.Millisecond
+		wdeadLine := time.Now().Add(TMwrite)
+		errread = SNMPparameters.conn.SetWriteDeadline(wdeadLine)
+		if errread != nil {
+			continue
 		}
+		writedn, errread = SNMPparameters.conn.Write(MS)
+		if errread != nil || writedn != len(MS) {
+			continue
+		}
+		//Запрос послан успешно
 
 		for time.Now().Before(rdeadLine) {
 			//Ожидаем данные не позднее Текущее время плюс TMs
@@ -438,8 +434,6 @@ func (SNMPparameters *SNMPv3Session) sendSnmpv2GetRequestPrototype(oidValue []SN
 					//Ошибка как "net.Error"
 					if nerror.Timeout() {
 						//Истек таймаут
-						//установим флаг повторной посылки
-						SendRequest = true
 						//И выход во внешний цикл
 						break
 					} else {
@@ -455,7 +449,6 @@ func (SNMPparameters *SNMPv3Session) sendSnmpv2GetRequestPrototype(oidValue []SN
 		//Внутренний цикл завершен но ошибок нет
 		if errread == nil {
 			errread = fmt.Errorf("timeout waiting for correct SNMP response")
-			SendRequest = true
 		}
 
 	}
