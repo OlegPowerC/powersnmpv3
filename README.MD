@@ -982,11 +982,11 @@ and returns result without failed OIDs
 
 In **Set** operation:  
 
-- gosnmp returns result with VarBinds which it tried to set and no error
+- **gosnmp** returns result with VarBinds which it tried to set and no error
 Result may be incorrectly interpreted by user.
 User must explicitly check resultSet.Error,resultSet.ErrorIndex to detect error
 
-- PowerSNMPv3 returns a fatal error which contains the first failed OID and type of error
+- **PowerSNMPv3** returns a fatal error which contains the first failed OID and type of error
 and no result. It is really a fatal error, because the SET operation is atomic
 
 ---
