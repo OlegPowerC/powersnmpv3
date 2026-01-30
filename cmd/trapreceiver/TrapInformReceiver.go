@@ -163,7 +163,12 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	defer conn.Close()
+	defer func() {
+		if err := conn.Close(); err != nil {
+			fmt.Printf("Error closing connection: %v\n", err)
+		}
+	}()
+
 	wg.Add(1)
 	go RecPacket(conn, Userv3Map, &wg)
 	fmt.Println("Press Ctrl+C to stop")

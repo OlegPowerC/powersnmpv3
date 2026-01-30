@@ -60,7 +60,12 @@ func main() {
 		fmt.Println("Session is nil")
 		os.Exit(1)
 	}
-	defer Ssess.Close()
+
+	defer func() {
+		if err := Ssess.Close(); err != nil {
+			fmt.Printf("Error closing session: %v\n", err)
+		}
+	}()
 
 	iArOID, _ := PowerSNMP.Convert_OID_StringToIntArray_RAW(*StrOid)
 
