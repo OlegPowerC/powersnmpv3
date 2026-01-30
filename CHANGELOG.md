@@ -20,9 +20,14 @@
 ## v1.2.7
 - Fix error message when received report with 1.3.6.1.6.3.15.1.1.1 (usmStatsUnsupportedSecLevels) 
 
-## v.2.9 January 27, 2026
+## v1.2.9 January 27, 2026
 ✨ Key Improvement  
 - Discovery Agent EngineID: Now performed in main get/set functions when proper REPORT is received
 - Automatic EngineID update without additional calls
 - 
 
+## v1.3.1 January 30, 2026
+- Change partial error behavior when all OIDs fail in GetMulti
+Mark partial error as fatal when all OIDs in GetMulti request fail.
+This provides better error semantics: complete failure = fatal error.
+- Change error handling in examples
