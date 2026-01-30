@@ -670,6 +670,7 @@ Part of request completed successfully. **Results are available!**
 
 ```
 type SNMPne_Errors struct {
+    AllOIDsFail bool
     Failedoids []PowerSNMPv3_Errors_FailedOids_Error
 }
 
