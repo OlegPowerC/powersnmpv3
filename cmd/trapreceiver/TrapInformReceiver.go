@@ -56,6 +56,7 @@ func PrTrap(addr string, port int, data []byte, Userv3Map map[string]*PowerSNMP.
 	SNMPver, SNMPv3User, v3SecData, PuErr := PowerSNMP.ParseTrapUsername(data)
 	if PuErr != nil {
 		fmt.Println("Ошибка разбора пакета")
+		return
 	}
 	var credentials PowerSNMP.SNMPTrapParameters
 
