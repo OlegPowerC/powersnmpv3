@@ -103,7 +103,8 @@ type SNMPv3_SecSeq struct {
 }
 
 type SNMPne_Errors struct {
-	Failedoids []PowerSNMPv3_Errors_FailedOids_Error
+	AllOIDsFail bool
+	Failedoids  []PowerSNMPv3_Errors_FailedOids_Error
 }
 
 type SNMPwrongReqID_MsgId_Errors struct {

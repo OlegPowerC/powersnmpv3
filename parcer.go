@@ -237,6 +237,9 @@ func receiverV2parser(SNMPparameters *SNMPv3Session, packet []byte, checkmsg_req
 		}
 		RetVar.V2PDU.VarBinds = append(RetVar.V2PDU.VarBinds, SNMP_Packet_V2_Decoded_VarBind{datain.RSnmpOID, SNMPVar{datain.RSnmpVar.Tag, datain.RSnmpVar.Class, datain.RSnmpVar.IsCompound, datain.RSnmpVar.Bytes}})
 	}
+	if len(partialerr.Failedoids) == len(pdu1.VarBinds) {
+		partialerr.AllOIDsFail = true
+	}
 
 	return RetVar, nil
 }
@@ -567,6 +570,9 @@ func receiverV3parser(SNMPparameters *SNMPv3Session, udppayload []byte, checkmsg
 				pdudecoded.VarBinds = append(pdudecoded.VarBinds, SNMP_Packet_V2_Decoded_VarBind{oidv.RSnmpOID, SNMPVar{oidv.RSnmpVar.Tag, oidv.RSnmpVar.Class, oidv.RSnmpVar.IsCompound, oidv.RSnmpVar.Bytes}})
 
 			}
+		}
+		if len(partialerr.Failedoids) == len(pdu1.VarBinds) {
+			partialerr.AllOIDsFail = true
 		}
 	}
 	ReturnSNMPpacker.GlobalData = RecivedGlobalParameters

@@ -82,6 +82,11 @@ func TestSNMPv3Session_SNMP_Get_Set_Walk(t *testing.T) {
 	IoidWA3, _ := Convert_OID_StringToIntArray_RAW(StrOidWA3)
 
 	GetOids := []SNMP_Packet_V2_Decoded_VarBind{{IoidWA1, SNMPvbNullValue}, {IoidWA2, SNMPvbNullValue}, {IoidWA3, SNMPvbNullValue}}
+	StrOidINV1, StrOidINV2, StrOidINV3 := "1.3.6.1.2.1.1.66.0", "1.3.6.1.2.1.1.99.0", "1.3.6.1.2.1.1.55.0"
+	IoidWAinv1, _ := Convert_OID_StringToIntArray_RAW(StrOidINV1)
+	IoidWAinv2, _ := Convert_OID_StringToIntArray_RAW(StrOidINV2)
+	IoidWAinv3, _ := Convert_OID_StringToIntArray_RAW(StrOidINV3)
+	GetOidsAllInvalid := []SNMP_Packet_V2_Decoded_VarBind{{IoidWAinv1, SNMPvbNullValue}, {IoidWAinv2, SNMPvbNullValue}, {IoidWAinv3, SNMPvbNullValue}}
 
 	Mg, Mgerr := Ssess.SNMP_GetMulti(GetOids)
 	for _, Mgv := range Mg {
@@ -94,7 +99,7 @@ func TestSNMPv3Session_SNMP_Get_Set_Walk(t *testing.T) {
 	t.Logf("SNMP v2 Error in SNMP_GetMulti: %v", Mgerr)
 	per, _ := ParseError(Mgerr)
 	if per.IsFatal {
-		t.Errorf("expected partial error but get fatal")
+		t.Errorf("expected partial error but got fatal")
 	} else {
 		if per.Oids != nil {
 			if len(per.Oids) > 0 {
@@ -157,7 +162,7 @@ func TestSNMPv3Session_SNMP_Get_Set_Walk(t *testing.T) {
 	t.Logf("SNMP v3 Error in SNMP_GetMulti: %s", Mgerrv3.Error())
 	perv3, _ := ParseError(Mgerrv3)
 	if perv3.IsFatal {
-		t.Errorf("expected partial error but get fatal")
+		t.Errorf("expected partial error but got fatal")
 	} else {
 		if perv3.Oids != nil {
 			if len(perv3.Oids) > 0 {
@@ -168,6 +173,46 @@ func TestSNMPv3Session_SNMP_Get_Set_Walk(t *testing.T) {
 
 					t.Errorf("Expected error in OID 1.3.6.1.2.1.1.99.0 but got: %s", Convert_OID_IntArrayToString_RAW(perv3.Oids[0].Failedoid))
 				}
+			}
+		}
+	}
+	t.Log("-------- End --------")
+
+	t.Log("-------- Get multiple oids V3, All oids is invalid --------")
+
+	MgvAlInv, MgerrvAllInv := Ssess.SNMP_GetMulti(GetOidsAllInvalid)
+	for _, MgvvAlInv := range MgvAlInv {
+		t.Log(Convert_OID_IntArrayToString_RAW(MgvvAlInv.RSnmpOID), "=", Convert_Variable_To_String(MgvvAlInv.RSnmpVar), ":", Convert_ClassTag_to_String(MgvvAlInv.RSnmpVar))
+	}
+	if MgerrvAllInv == nil {
+		t.Errorf("expected error when all OIDs are invalid")
+	}
+
+	t.Logf("SNMP v3 Error in SNMP_GetMulti: %s", MgerrvAllInv.Error())
+	pervAllInv, _ := ParseError(MgerrvAllInv)
+	if !pervAllInv.IsFatal {
+		t.Errorf("expected fatal error but got partial")
+	} else {
+		if pervAllInv.Oids != nil {
+			if len(pervAllInv.Oids) == 3 {
+				if pervAllInv.Oids[0].Error_id != 128 {
+					t.Errorf("Expected error id 128 but got: %d", pervAllInv.Oids[0].Error_id)
+				}
+				if !slices.Equal(pervAllInv.Oids[0].Failedoid, IoidWAinv1) {
+
+					t.Errorf("Expected error in OID 1.3.6.1.2.1.1.66.0 but got: %s", Convert_OID_IntArrayToString_RAW(pervAllInv.Oids[0].Failedoid))
+				}
+				if !slices.Equal(pervAllInv.Oids[1].Failedoid, IoidWAinv2) {
+
+					t.Errorf("Expected error in OID 1.3.6.1.2.1.1.99.0 but got: %s", Convert_OID_IntArrayToString_RAW(pervAllInv.Oids[1].Failedoid))
+				}
+
+				if !slices.Equal(pervAllInv.Oids[2].Failedoid, IoidWAinv3) {
+
+					t.Errorf("Expected error in OID 1.3.6.1.2.1.1.55.0 but got: %s", Convert_OID_IntArrayToString_RAW(pervAllInv.Oids[2].Failedoid))
+				}
+			} else {
+				t.Errorf("Expected error in 3 OIDs, but got %d:", len(pervAllInv.Oids))
 			}
 		}
 	}

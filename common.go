@@ -114,7 +114,7 @@ func ParseError(err error) (SNMPerr SNMPud_Errors, CommonError error) {
 				ErrorDescription: fmt.Sprintf("%s (status=%d): %s", Convert_OID_IntArrayToString_RAW(oid.Failedoid), oid.Error_id, SNMPPDUErrorIntToText(oid.Error_id)),
 			}
 		}
-		return SNMPud_Errors{IsFatal: false, Oids: DUerOids}, nil
+		return SNMPud_Errors{IsFatal: partialerr.AllOIDsFail, Oids: DUerOids}, nil
 	}
 	if errors.As(err, &fatalerr) {
 		DUerOids := make([]SNMPud_OidError, 1)
