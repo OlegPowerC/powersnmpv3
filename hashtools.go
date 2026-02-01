@@ -158,7 +158,7 @@ func expandPrivKey(ku []byte, privProto int, authProto int, engineID []byte) []b
 		result := make([]byte, 32)
 
 		if len(ku) >= 20 {
-			// SHA-1: рекурсивная локализация (РАБОТАЕТ!)
+			// SHA-1: рекурсивная локализация
 			copy(result[0:20], ku[0:20])
 			ext := makeLocalizedKeyFromBytes(ku[0:20], engineID, authProto)
 			copy(result[20:32], ext[0:12])

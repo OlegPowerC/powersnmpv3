@@ -6,13 +6,25 @@
 // Commercial support and custom development available.
 package PowerSNMPv3
 
+import ASNber "github.com/OlegPowerC/asn1modsnmp"
+
+// Reexport ASN.1 Tags
+const (
+	SNMP_type_BOOLEAN     = ASNber.TagBoolean
+	SNMP_type_INTEGER     = ASNber.TagInteger
+	SNMP_type_BITSTRING   = ASNber.TagBitString
+	SNMP_type_OCTETSTRING = ASNber.TagOctetString
+	SNMP_type_NULL        = ASNber.TagNull
+	SNMP_type_OID         = ASNber.TagOID
+)
+
 // ASN.1/BER tag encoding constants.
 // Bits 7-6: Class (Universal=00, Application=01, Context=10, Private=11)
 // Bit 5: Constructed flag (0=primitive, 1=constructed/compound like SEQUENCE)
 // Bits 4-0: Tag Number
 //
 // Example: Class=0x01 (Application), Tag=0x03 → 0x43 (APPLICATION 3 = SNMP TIMETICKS)
-
+// ASN.1 tags represent the type of the following object.
 const (
 	// SNMP Application Types (Class=1)
 	SNMP_type_IPADDR    = 0
