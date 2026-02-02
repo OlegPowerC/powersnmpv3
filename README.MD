@@ -1457,7 +1457,7 @@ MIT License
 
 Commercial version with extended support available.
 
-**Contact:** oleg@powerc.ru
+**Contact:** oleg.powerc@gmail.com
 
 ### v1.2.6 – Improved Buffer Management and MaxMsgSize Discovery
 ##### What’s new  
