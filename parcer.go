@@ -184,8 +184,8 @@ func receiverV2parser(SNMPparameters *SNMPv3Session, packet []byte, checkmsg_req
 
 	}
 
-	vs.V2VarBind.FullBytes[0] = 0x30
-	_, umerr = ASNber.Unmarshal(vs.V2VarBind.FullBytes, &pdu1)
+	params := fmt.Sprintf("tag:%d", vs.V2VarBind.Tag)
+	_, umerr = ASNber.UnmarshalWithParams(vs.V2VarBind.FullBytes, &pdu1, params)
 	if umerr != nil {
 		return RetVar, umerr
 	}
@@ -509,18 +509,14 @@ func receiverV3parser(SNMPparameters *SNMPv3Session, udppayload []byte, checkmsg
 
 	}
 
-	if len(Recivedv3_PDU.V2VarBind.FullBytes) == 0 {
+	if len(Recivedv3_PDU.V2VarBind.FullBytes) < 2 {
 		//длина данных нулевая
-		umerr = errors.New("Received PDU Not Found")
+		umerr = errors.New("Received PDU too short")
 		return ReturnSNMPpacker, umerr
 	}
 
-	//Это хак для того чтоб работал Unmarshal ASN.1 правильно
-	//дело в том что нам приходит PDU т первый байт в нем - тип и он будет Context-Specific
-	//Его не поймет Unmarshal, но это просто Sequence (0x30) вот тут мы его и меняем на Sequence
-	//А чтоб избежать ошибок проверим что длина не равна нулю (выше проверяется длина FullBytes и если 0 то выход
-	Recivedv3_PDU.V2VarBind.FullBytes[0] = 0x30
-	_, umerr = ASNber.Unmarshal(Recivedv3_PDU.V2VarBind.FullBytes, &pdu1)
+	params := fmt.Sprintf("tag:%d", Recivedv3_PDU.V2VarBind.Tag)
+	_, umerr = ASNber.UnmarshalWithParams(Recivedv3_PDU.V2VarBind.FullBytes, &pdu1, params)
 	if umerr != nil {
 		return ReturnSNMPpacker, umerr
 	} else {
