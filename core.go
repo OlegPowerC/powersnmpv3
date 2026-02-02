@@ -613,12 +613,6 @@ func (SNMPparameters *SNMPv3Session) snmpv3_GetSet(oidValue []SNMP_Packet_V2_Dec
 		maxRepetitions = SNMPparameters.SNMPparams.MaxRepetitions
 	}
 
-	defer func() {
-		if ReturnError == nil && len(partialerr.Failedoids) > 0 {
-			err = partialerr
-		}
-	}()
-
 	OidVarConverted := make([]SNMP_Packet_V2_VarBind, 0)
 	for _, elm := range oidValue {
 		OidVarConverted = append(OidVarConverted, SNMP_Packet_V2_VarBind{elm.RSnmpOID, Convert_setvar_toasn1raw(elm.RSnmpVar)})
@@ -645,11 +639,9 @@ func (SNMPparameters *SNMPv3Session) snmpv3_GetSet(oidValue []SNMP_Packet_V2_Dec
 				return nil, ReturnError
 			}
 		}
-		return rts.V3PDU.V2VarBind.VarBinds, nil
-	} else {
-		ReturnVal = rts.V3PDU.V2VarBind.VarBinds
+		return rts.V3PDU.V2VarBind.VarBinds, complexerr
 	}
-	return ReturnVal, ReturnError
+	return rts.V3PDU.V2VarBind.VarBinds, complexerr
 }
 
 // SNMP_Walk performs complete SNMP WALK starting from base OID using GETNEXT.
