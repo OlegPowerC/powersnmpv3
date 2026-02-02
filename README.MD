@@ -1305,7 +1305,7 @@ snmpinform -v 2c -c public 192.168.1.100 42 coldStart.0
     }
 ```
 
-#### Complete examples locate in **cmd** folder
+#### Complete examples are located in the **cmd** folder
 
 ---
 
