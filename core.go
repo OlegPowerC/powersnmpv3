@@ -637,7 +637,7 @@ func (SNMPparameters *SNMPv3Session) snmpv3_GetSet(oidValue []SNMP_Packet_V2_Dec
 		if len(rts.V3PDU.V2VarBind.VarBinds) == 0 {
 			return ReturnVal, errors.New("empty report")
 		}
-		rts, complexerr = SNMPparameters.reportHandle(rts, OidVarConverted, Request_Type, nonRepeaters, maxRepetitions, 0)
+		rts, complexerr = SNMPparameters.reportHandle(rts, OidVarConverted, Request_Type, nonRepeaters, maxRepetitions, 0, complexerr)
 		if complexerr != nil {
 			//Если есть серьезная ошибка, то выходим и возвращаем ее
 			if !errors.As(complexerr, &partialerr) {
