@@ -9,6 +9,7 @@ package PowerSNMPv3
 import ASNber "github.com/OlegPowerC/asn1modsnmp"
 
 // Reexport ASN.1 Tags
+// Class=0x00 (Universal)
 const (
 	SNMP_type_BOOLEAN     = ASNber.TagBoolean
 	SNMP_type_INTEGER     = ASNber.TagInteger

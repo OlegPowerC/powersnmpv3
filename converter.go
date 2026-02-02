@@ -657,3 +657,183 @@ func formatOctetString(data []byte) string {
 	// Иначе выводим как HEX строку
 	return hex.EncodeToString(data)
 }
+
+// IsBoolean returns true if SNMPVar is Universal Class BOOLEAN (Tag 1).
+//
+// Matches: Class=0, Constructed=0, Tag=1 (0x01)
+// Used in: Convert_Variable_To_String() boolean processing
+//
+// Example:
+//
+//	if IsBoolean(varbind.RSnmpVar) { fmt.Println("true/false") }
+func IsBoolean(Val SNMPVar) bool {
+	if !Val.IsCompound && Val.ValueClass == ASNber.ClassUniversal && Val.ValueType == ASNber.TagBoolean {
+		return true
+	}
+	return false
+}
+
+// IsInteger returns true if SNMPVar is Universal Class INTEGER (Tag 2).
+//
+// Matches: Class=0, Constructed=0, Tag=2 (0x02)
+// Used in: Convert_snmpint_to_int32(), sysUpTime processing
+//
+// Example:
+//
+//	if IsInteger(v) { return Convert_snmpint_to_int32(v.Value) }
+func IsInteger(Val SNMPVar) bool {
+	if !Val.IsCompound && Val.ValueClass == ASNber.ClassUniversal && Val.ValueType == ASNber.TagInteger {
+		return true
+	}
+	return false
+}
+
+// IsBitstring returns true if SNMPVar is Universal Class BIT STRING (Tag 3).
+//
+// Matches: Class=0, Constructed=0, Tag=3 (0x03)
+// Used in: Rare bitfield processing
+//
+// Example:
+//
+//	if IsBitstring(v) { return fmt.Sprintf("%d", Convert_bytearray_to_int(v.Value)) }
+func IsBitstring(Val SNMPVar) bool {
+	if !Val.IsCompound && Val.ValueClass == ASNber.ClassUniversal && Val.ValueType == ASNber.TagBitString {
+		return true
+	}
+	return false
+}
+
+// IsOctetString returns true if SNMPVar is Universal Class OCTET STRING (Tag 4).
+//
+// Matches: Class=0, Constructed=0, Tag=4 (0x04)
+// Used in: sysName.0, ifAlias → formatOctetString()
+//
+// Example:
+//
+//	if IsOctetString(v) { return formatOctetString(v.Value) }
+func IsOctetString(Val SNMPVar) bool {
+	if !Val.IsCompound && Val.ValueClass == ASNber.ClassUniversal && Val.ValueType == ASNber.TagOctetString {
+		return true
+	}
+	return false
+}
+
+// IsNull returns true if SNMPVar is Universal Class NULL (Tag 5).
+//
+// Matches: Class=0, Constructed=0, Tag=5 (0x05)
+// Used in: SNMPv2 noSuchObject/noSuchInstance
+//
+// Example:
+//
+//	if IsNull(v) { return "NULL" }
+func IsNull(Val SNMPVar) bool {
+	if !Val.IsCompound && Val.ValueClass == ASNber.ClassUniversal && Val.ValueType == ASNber.TagNull {
+		return true
+	}
+	return false
+}
+
+// IsOid returns true if SNMPVar is Universal Class OID (Tag 6).
+//
+// Matches: Class=0, Constructed=0, Tag=6 (0x06)
+// Used in: Convert_OID_IntArrayToString_DER()
+//
+// Example:
+//
+//	if IsOid(v) { return Convert_OID_IntArrayToString_DER(Convert_bytearray_to_intarray(v.Value)) }
+func IsOid(Val SNMPVar) bool {
+	if !Val.IsCompound && Val.ValueClass == ASNber.ClassUniversal && Val.ValueType == ASNber.TagOID {
+		return true
+	}
+	return false
+}
+
+// IsIpaddr returns true if SNMPVar is Application Class IPADDRESS (Tag 0).
+//
+// Matches: Class=1, Constructed=0, Tag=0 (0x40)
+// Used in: ipAdEntAddr → formatIPAddress()
+//
+// Example:
+//
+//	if IsIpaddr(v) { return formatIPAddress(v.Value) }
+func IsIpaddr(Val SNMPVar) bool {
+	if !Val.IsCompound && Val.ValueClass == ASNber.ClassApplication && Val.ValueType == SNMP_type_IPADDR {
+		return true
+	}
+	return false
+}
+
+// IsCounter32 returns true if SNMPVar is Application Class Counter32 (Tag 1).
+//
+// Matches: Class=1, Constructed=0, Tag=1 (0x41)
+// Used in: ifInOctets → Convert_snmpint_to_int32()
+//
+// Example:
+//
+//	if IsCounter32(v) { return fmt.Sprintf("%d", Convert_snmpint_to_int32(v.Value)) }
+func IsCounter32(Val SNMPVar) bool {
+	if !Val.IsCompound && Val.ValueClass == ASNber.ClassApplication && Val.ValueType == SNMP_type_COUNTER32 {
+		return true
+	}
+	return false
+}
+
+// IsGauge32 returns true if SNMPVar is Application Class Gauge32 (Tag 2).
+//
+// Matches: Class=1, Constructed=0, Tag=2 (0x42)
+// Used in: ifSpeed → Convert_snmpint_to_int32()
+//
+// Example:
+//
+//	if IsGauge32(v) { return fmt.Sprintf("%d", Convert_snmpint_to_int32(v.Value)) }
+func IsGauge32(Val SNMPVar) bool {
+	if !Val.IsCompound && Val.ValueClass == ASNber.ClassApplication && Val.ValueType == SNMP_type_GAUGE32 {
+		return true
+	}
+	return false
+}
+
+// IsTimetick returns true if SNMPVar is Application Class Timeticks (Tag 3).
+//
+// Matches: Class=1, Constructed=0, Tag=3 (0x43)
+// Used in: sysUpTime.0 → time.Duration formatting
+//
+// Example:
+//
+//	if IsTimetick(v) { return time.Duration(Convert_bytearray_to_int(v.Value)*10).String() }
+func IsTimetick(Val SNMPVar) bool {
+	if !Val.IsCompound && Val.ValueClass == ASNber.ClassApplication && Val.ValueType == SNMP_type_TIMETICKS {
+		return true
+	}
+	return false
+}
+
+// IsOpaque returns true if SNMPVar is Application Class Opaque (Tag 4).
+//
+// Matches: Class=1, Constructed=0, Tag=4 (0x44)
+// Used in: Binary data → hex.EncodeToString()
+//
+// Example:
+//
+//	if IsOpaque(v) { return hex.EncodeToString(v.Value) }
+func IsOpaque(Val SNMPVar) bool {
+	if !Val.IsCompound && Val.ValueClass == ASNber.ClassApplication && Val.ValueType == SNMP_type_OPAQUE {
+		return true
+	}
+	return false
+}
+
+// IsCounter64 returns true if SNMPVar is Application Class Counter64 (Tag 6).
+//
+// Matches: Class=1, Constructed=0, Tag=6 (0x46)
+// Used in: ifHCInOctets → Convert_bytearray_to_uint()
+//
+// Example:
+//
+//	if IsCounter64(v) { return fmt.Sprintf("%d", Convert_bytearray_to_uint(v.Value)) }
+func IsCounter64(Val SNMPVar) bool {
+	if !Val.IsCompound && Val.ValueClass == ASNber.ClassApplication && Val.ValueType == SNMP_type_COUNTER64 {
+		return true
+	}
+	return false
+}
