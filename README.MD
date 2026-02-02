@@ -1052,7 +1052,7 @@ snmpinform -v 2c -c public 192.168.1.100 42 coldStart.0
 ### Get Cisco sysName sysDescription Location
 
 ```go
-    //nolint:unused 
+	
 	const (
         DESCRIPTION_OID                = "1.3.6.1.2.1.1.1.0"
         LOCATION_OID                   = "1.3.6.1.2.1.1.6.0"
