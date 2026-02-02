@@ -47,7 +47,7 @@ func (Session *SNMPv3Session) reportHandle(rts SNMPv3_DecodePacket, OidVarConver
 	var ReturnVal SNMPv3_DecodePacket
 	var partialerr SNMPne_Errors
 	depth = depth + 1
-	if depth > 2 {
+	if depth > 3 {
 		return ReturnVal, errors.New("Too many calls")
 	}
 
