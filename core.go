@@ -40,7 +40,10 @@ func (Session *SNMPv3Session) embeddedNoInTime(rts SNMPv3_DecodePacket) error {
 	return nil
 }
 
-func (Session *SNMPv3Session) reportHandle(rts SNMPv3_DecodePacket, OidVarConverted []SNMP_Packet_V2_VarBind, Request_Type int, nonRepeaters int32, maxRepetitions int32, depth uint8) (SNMPv3_DecodePacket, error) {
+func (Session *SNMPv3Session) reportHandle(rts SNMPv3_DecodePacket, OidVarConverted []SNMP_Packet_V2_VarBind, Request_Type int, nonRepeaters int32, maxRepetitions int32, depth uint8, perr error) (SNMPv3_DecodePacket, error) {
+	if rts.MessageType != REPORT_MESSAGE {
+		return rts, perr
+	}
 	atomic.AddInt32(&Session.SNMPparams.MessageId, 1)
 	atomic.AddInt32(&Session.SNMPparams.MessageIDv2, 1)
 	var ReturnError error
@@ -62,16 +65,16 @@ func (Session *SNMPv3Session) reportHandle(rts SNMPv3_DecodePacket, OidVarConver
 		}
 
 		//Повторный запрос
-		rtsp, complexerr := Session.sendSnmpv3GetRequestPrototype(OidVarConverted, Request_Type, nonRepeaters, maxRepetitions)
-		rtsp, complexerr = Session.reportHandle(rtsp, OidVarConverted, Request_Type, nonRepeaters, maxRepetitions, depth)
-		if complexerr != nil {
+		rtspreq, complexerr := Session.sendSnmpv3GetRequestPrototype(OidVarConverted, Request_Type, nonRepeaters, maxRepetitions)
+		rtsp, complexerrfr := Session.reportHandle(rtspreq, OidVarConverted, Request_Type, nonRepeaters, maxRepetitions, depth, complexerr)
+		if complexerrfr != nil {
 			//Если есть серьезная ошибка, то выходим и возвращаем ее
-			if !errors.As(complexerr, &partialerr) {
-				ReturnError = complexerr
+			if !errors.As(complexerrfr, &partialerr) {
+				ReturnError = complexerrfr
 				return ReturnVal, ReturnError
 			}
 		}
-		return rtsp, complexerr
+		return rtsp, complexerrfr
 	}
 	if rts.V3PDU.V2VarBind.VarBinds[0].RSnmpOID.Equal(OID_UnknownEngineId) && depth == 1 {
 		discoer := Session.embeddedDiscovery(rts)
@@ -80,17 +83,16 @@ func (Session *SNMPv3Session) reportHandle(rts SNMPv3_DecodePacket, OidVarConver
 		}
 
 		//Повторный запрос
-		rtsp, complexerr := Session.sendSnmpv3GetRequestPrototype(OidVarConverted, Request_Type, nonRepeaters, maxRepetitions)
-		rtsp, complexerr = Session.reportHandle(rtsp, OidVarConverted, Request_Type, nonRepeaters, maxRepetitions, depth)
-		if complexerr != nil {
+		rtspreq, complexerr := Session.sendSnmpv3GetRequestPrototype(OidVarConverted, Request_Type, nonRepeaters, maxRepetitions)
+		rtsp, complexerrfr := Session.reportHandle(rtspreq, OidVarConverted, Request_Type, nonRepeaters, maxRepetitions, depth, complexerr)
+		if complexerrfr != nil {
 			//Если есть серьезная ошибка, то выходим и возвращаем ее
-			if !errors.As(complexerr, &partialerr) {
-				ReturnError = complexerr
+			if !errors.As(complexerrfr, &partialerr) {
+				ReturnError = complexerrfr
 				return ReturnVal, ReturnError
 			}
 		}
-
-		return rtsp, complexerr
+		return rtsp, complexerrfr
 
 	}
 	if rts.V3PDU.V2VarBind.VarBinds[0].RSnmpOID.Equal(OID_UnknownEngineId) && depth > 1 {
