@@ -1049,6 +1049,65 @@ snmpinform -v 3 -u snmpuser -a sha -A authpass123 \
 snmpinform -v 2c -c public 192.168.1.100 42 coldStart.0
 ```
 
+### Get Cisco sysName sysDescription Location
+
+```go
+    //nolint:unused 
+	const (
+        DESCRIPTION_OID                = "1.3.6.1.2.1.1.1.0"
+        LOCATION_OID                   = "1.3.6.1.2.1.1.6.0"
+        NAME_OID                       = "1.3.6.1.2.1.1.5.0"
+    )
+
+    func GetSwData(SNMPsession *PowerSNMPv3.SNMPv3Session) (SwDescription string, SwName string, SwLocation string, err error) {
+    SwNm := ""
+    SwDsc := ""
+    SwLoc := ""
+    
+        if !SNMPsession.SNMPparams.DiscoveredEngineId.Load() && SNMPsession.SNMPparams.SNMPversion == 3 {
+            return SwDsc, SwNm, SwLoc, errors.New(DISCOVERY_ERR)
+        }
+    
+        seqoid := [3]string{NAME_OID, DESCRIPTION_OID, LOCATION_OID}
+        seoidi := []PowerSNMPv3.SNMP_Packet_V2_Decoded_VarBind{}
+        for _, so := range seqoid {
+            ioc, oierr := PowerSNMPv3.ParseOID(so)
+            if oierr != nil {
+                return SwDsc, SwNm, SwLoc, oierr
+            }
+            seoidi = append(seoidi, PowerSNMPv3.SNMP_Packet_V2_Decoded_VarBind{ioc, PowerSNMPv3.SNMPvbNullValue})
+        }
+        SwdataGm, SwdataGerr := SNMPsession.SNMP_GetMulti(seoidi)
+        if SwdataGerr != nil {
+            pe, ce := PowerSNMPv3.ParseError(SwdataGerr)
+            if ce != nil {
+                return SwDsc, SwNm, SwLoc, ce
+            }
+            if pe.IsFatal {
+                return SwDsc, SwNm, SwLoc, SwdataGerr
+            }
+        }
+    
+        for _, rdata := range SwdataGm {
+            if PowerSNMPv3.IsOctetString(rdata.RSnmpVar) && len(seoidi) == 3 {
+                if slices.Equal(rdata.RSnmpOID, seoidi[0].RSnmpOID) {
+                    SwNm = string(rdata.RSnmpVar.Value)
+                }
+                if slices.Equal(rdata.RSnmpOID, seoidi[1].RSnmpOID) {
+                    SwDsc = string(rdata.RSnmpVar.Value)
+                }
+                if slices.Equal(rdata.RSnmpOID, seoidi[2].RSnmpOID) {
+                    SwLoc = string(rdata.RSnmpVar.Value)
+                }
+            }
+        }
+    
+        return SwDsc, SwNm, SwLoc, nil
+    }
+```
+
+#### Complete examples locate in **cmd** folder
+
 ---
 
 ## Testing

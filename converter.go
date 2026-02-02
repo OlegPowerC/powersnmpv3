@@ -110,6 +110,13 @@ func Convert_OID_StringToIntArray_RAW(OIDStr string) (OIDIntArray []int, err err
 	return RetArray, nil
 }
 
+// ParseOID converts OID string (e.g., "1.3.6.1.2.1.1.1.0") to integer array []int.
+// Performs basic validation and splitting by dots.
+// Invalid formats return error.
+//
+// Example:
+//
+//	oid, err := ParseOID("1.3.6.1.2.1.1.1.0")  // []int{1,3,6,1,2,1,1,1,0}, nil
 func ParseOID(OIDStr string) (OIDIntArray []int, err error) {
 	return Convert_OID_StringToIntArray_RAW(OIDStr)
 }
