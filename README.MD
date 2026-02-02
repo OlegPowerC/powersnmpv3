@@ -1,3 +1,4 @@
+<!-- suppress ALL -->
 # PowerSNMPv3
 [![Go](https://img.shields.io/badge/go-%3E%3D1.21-blue.svg)](https://pkg.go.dev/github.com/OlegPowerC/powersnmpv3)
 [![Go Report Card](https://goreportcard.com/badge/github.com/OlegPowerC/powersnmpv3)](https://goreportcard.com/report/github.com/OlegPowerC/powersnmpv3)
