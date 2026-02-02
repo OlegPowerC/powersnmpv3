@@ -31,3 +31,13 @@
 Mark partial error as fatal when all OIDs in GetMulti request fail.
 This provides better error semantics: complete failure = fatal error.
 - Change error handling in examples
+
+## v1.4.1 Feb 03, 2026
+
+### Bug Fixes
+- Fixed Context-Specific tag handling using `UnmarshalWithParams`
+- Fixed critical MaxMsgSize bug (was 0, now 1360 per RFC 3412)
+
+### Improvements
+- Removed byte manipulation hack for PDU parsing
+- Clean ASN.1 parsing using standard mechanisms
