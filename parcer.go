@@ -82,6 +82,8 @@ func ParseTrapWithCredentials(SenderIp string, SenderPort int, packet []byte, Us
 	SNMPparameters.SNMPparams.Username = UserData.Username
 	SNMPparameters.SNMPparams.SNMPversion = UserData.SNMPversion
 	SNMPparameters.SNMPparams.Community = UserData.Community
+	SNMPparameters.SNMPparams.MaxMsgSize = 1360
+	SNMPparameters.SNMPparams.txMaxMsgSize = 1360
 	SNMPparameters.IPaddress = SenderIp
 	SNMPparameters.SNMPparams.TimeoutBtwRepeat = 300
 	SNMPparameters.Port = SenderPort
