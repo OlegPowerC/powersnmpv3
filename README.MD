@@ -548,6 +548,204 @@ func Convert_ClassTag_to_String(Var SNMPVar) string
 typeStr := snmp.Convert_ClassTag_to_String(varbind.RSnmpVar)
 // "Universal OCTET STRING", "Application COUNTER32", etc.
 ```
+---
+### Type Checking Functions
+
+Functions for identifying SNMP variable types. Return `true` if the variable matches the specified ASN.1 type.
+
+#### IsBoolean
+
+Checks if SNMPVar is Universal Class BOOLEAN (Tag 1).
+```
+func IsBoolean(Val SNMPVar) bool
+```
+
+**Matches:** Class=0, Constructed=0, Tag=1 (0x01)
+
+**Example:**
+```
+if snmp.IsBoolean(varbind.RSnmpVar) {
+    fmt.Println("Boolean value:", varbind.RSnmpVar.Value[0] != 0)
+}
+```
+
+#### IsInteger
+
+Checks if SNMPVar is Universal Class INTEGER (Tag 2).
+```
+func IsInteger(Val SNMPVar) bool
+```
+
+**Matches:** Class=0, Constructed=0, Tag=2 (0x02)
+
+**Example:**
+```
+if snmp.IsInteger(varbind.RSnmpVar) {
+    value := snmp.Convert_snmpint_to_int32(varbind.RSnmpVar.Value)
+    fmt.Println("Integer:", value)
+}
+```
+
+#### IsBitstring
+
+Checks if SNMPVar is Universal Class BIT STRING (Tag 3).
+```
+func IsBitstring(Val SNMPVar) bool
+```
+
+**Matches:** Class=0, Constructed=0, Tag=3 (0x03)
+
+#### IsOctetString
+
+Checks if SNMPVar is Universal Class OCTET STRING (Tag 4).
+```
+func IsOctetString(Val SNMPVar) bool
+```
+
+**Matches:** Class=0, Constructed=0, Tag=4 (0x04)  
+**Used in:** sysName, sysLocation
+
+**Example:**
+```
+if snmp.IsOctetString(varbind.RSnmpVar) {
+    str := string(varbind.RSnmpVar.Value)
+    fmt.Println("String:", str)
+}
+```
+
+#### IsNull
+
+Checks if SNMPVar is Universal Class NULL (Tag 5).
+```
+func IsNull(Val SNMPVar) bool
+```
+
+**Matches:** Class=0, Constructed=0, Tag=5 (0x05)
+
+**Example:**
+```
+if snmp.IsNull(varbind.RSnmpVar) {
+    fmt.Println("NULL value")
+}
+```
+
+#### IsOid
+
+Checks if SNMPVar is Universal Class OID (Tag 6).
+```
+func IsOid(Val SNMPVar) bool
+```
+
+**Matches:** Class=0, Constructed=0, Tag=6 (0x06)  
+**Used in:** OID value processing
+
+**Example:**
+```
+if snmp.IsOid(varbind.RSnmpVar) {
+    oidArray := snmp.Convert_bytearray_to_intarray(varbind.RSnmpVar.Value)
+    oidStr := snmp.Convert_OID_IntArrayToString_DER(oidArray)
+    fmt.Println("OID:", oidStr)
+}
+```
+
+#### IsIpaddr
+
+Checks if SNMPVar is Application Class IPADDRESS (Tag 0).
+```
+func IsIpaddr(Val SNMPVar) bool
+```
+
+**Matches:** Class=1, Constructed=0, Tag=0 (0x40)  
+**Used in:** ipAdEntAddr, IP address fields
+
+#### IsCounter32
+
+Checks if SNMPVar is Application Class Counter32 (Tag 1).
+```
+func IsCounter32(Val SNMPVar) bool
+```
+
+**Matches:** Class=1, Constructed=0, Tag=1 (0x41)
+
+**Example:**
+```
+if snmp.IsCounter32(varbind.RSnmpVar) {
+    counter := snmp.Convert_snmpint_to_int32(varbind.RSnmpVar.Value)
+    fmt.Printf("Counter32: %d\n", counter)
+}
+```
+
+#### IsGauge32
+
+Checks if SNMPVar is Application Class Gauge32 (Tag 2).
+```
+func IsGauge32(Val SNMPVar) bool
+```
+
+**Matches:** Class=1, Constructed=0, Tag=2 (0x42)
+
+**Example:**
+```
+if snmp.IsGauge32(varbind.RSnmpVar) {
+    gauge := snmp.Convert_snmpint_to_int32(varbind.RSnmpVar.Value)
+    fmt.Printf("Gauge32: %d\n", gauge)
+}
+```
+
+#### IsTimetick
+
+Checks if SNMPVar is Application Class Timeticks (Tag 3).
+```
+func IsTimetick(Val SNMPVar) bool
+```
+
+**Matches:** Class=1, Constructed=0, Tag=3 (0x43)  
+**Used in:** sysUpTime.0, time measurements
+
+**Example:**
+```
+if snmp.IsTimetick(varbind.RSnmpVar) {
+    ticks := snmp.Convert_bytearray_to_int(varbind.RSnmpVar.Value)
+    duration := time.Duration(ticks * 10 * time.Millisecond)
+    fmt.Println("Uptime:", duration.String())
+}
+```
+
+#### IsOpaque
+
+Checks if SNMPVar is Application Class Opaque (Tag 4).
+```
+func IsOpaque(Val SNMPVar) bool
+```
+
+**Matches:** Class=1, Constructed=0, Tag=4 (0x44)  
+**Used in:** Binary data, vendor-specific encodings
+
+**Example:**
+```
+if snmp.IsOpaque(varbind.RSnmpVar) {
+    hexStr := hex.EncodeToString(varbind.RSnmpVar.Value)
+    fmt.Println("Opaque (hex):", hexStr)
+}
+```
+
+#### IsCounter64
+
+Checks if SNMPVar is Application Class Counter64 (Tag 6).
+```
+func IsCounter64(Val SNMPVar) bool
+```
+
+**Matches:** Class=1, Constructed=0, Tag=6 (0x46)  
+**Used in:** high-capacity counters
+
+**Example:**
+```
+if snmp.IsCounter64(varbind.RSnmpVar) {
+    counter := snmp.Convert_bytearray_to_uint(varbind.RSnmpVar.Value)
+    fmt.Printf("Counter64: %d\n", counter)
+}
+```
 
 ---
 
