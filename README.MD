@@ -1,4 +1,3 @@
-<!-- suppress ALL -->
 # PowerSNMPv3
 [![Go](https://img.shields.io/badge/go-%3E%3D1.21-blue.svg)](https://pkg.go.dev/github.com/OlegPowerC/powersnmpv3)
 [![Go Report Card](https://goreportcard.com/badge/github.com/OlegPowerC/powersnmpv3)](https://goreportcard.com/report/github.com/OlegPowerC/powersnmpv3)
@@ -1052,8 +1051,7 @@ snmpinform -v 2c -c public 192.168.1.100 42 coldStart.0
 
 ### Get Cisco sysName sysDescription Location
 
-```go
-//nolint:unused
+```
 	
 	const (
         DESCRIPTION_OID                = "1.3.6.1.2.1.1.1.0"
