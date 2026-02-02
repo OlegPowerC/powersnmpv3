@@ -14,6 +14,14 @@ import (
 	ASNber "github.com/OlegPowerC/asn1modsnmp"
 )
 
+var OID_NoInTime = []int{1, 3, 6, 1, 6, 3, 15, 1, 1, 2, 0}
+var OID_WrongUsername = []int{1, 3, 6, 1, 6, 3, 15, 1, 1, 3, 0}
+var OID_WrongDigest = []int{1, 3, 6, 1, 6, 3, 15, 1, 1, 5, 0}
+var OID_DecryptionError = []int{1, 3, 6, 1, 6, 3, 15, 1, 1, 6, 0}
+var OID_UnknownContext = []int{1, 3, 6, 1, 6, 3, 12, 1, 5, 0}
+var OID_UnsupportedSecLevels = []int{1, 3, 6, 1, 6, 3, 15, 1, 1, 1, 0}
+var OID_UnknownEngineId = []int{1, 3, 6, 1, 6, 3, 15, 1, 1, 4, 0}
+
 var SNMPErrorNames = map[int]string{
 	sNMP_ErrNoError:                           "NoError",
 	sNMP_ErrResponseTooLarge:                  "ResponseTooLarge",

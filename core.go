@@ -21,6 +21,103 @@ import (
 	ASNber "github.com/OlegPowerC/asn1modsnmp"
 )
 
+func (Session *SNMPv3Session) embeddedNoInTime(rts SNMPv3_DecodePacket) error {
+
+	RecivedBoots := rts.SecuritySettings.Boots
+	RecivedTime := rts.SecuritySettings.Time
+	var ReturnError error
+	if RecivedBoots > 0 || RecivedTime > 0 {
+		// Некоторые SNMP агенты, при определении Engine ID не присылают Boots и Time
+		// поэтому их можно выставить после ополучения ошибки NoInTime с правильными значениями
+		Session.SNMPparams.DiscoveredTimeBoots.Store(true)
+		atomic.StoreInt32(&Session.SNMPparams.RBoots, RecivedBoots)
+		atomic.StoreInt32(&Session.SNMPparams.RTime, RecivedTime)
+
+	} else {
+		ReturnError = errors.New("time synchronization failed: boots and time are zero")
+		return ReturnError
+	}
+	return nil
+}
+
+func (Session *SNMPv3Session) reportHandle(OidVarConverted []SNMP_Packet_V2_VarBind, Request_Type int, nonRepeaters int32, maxRepetitions int32, depth uint8) (SNMPv3_DecodePacket, error) {
+	atomic.AddInt32(&Session.SNMPparams.MessageId, 1)
+	atomic.AddInt32(&Session.SNMPparams.MessageIDv2, 1)
+	var ReturnError error
+	var ReturnVal SNMPv3_DecodePacket
+	depth = depth + 1
+	if depth > 2 {
+		return ReturnVal, errors.New("Too many calls")
+	}
+	var partialerr SNMPne_Errors
+	//Повторный запрос
+	rts, complexerr := Session.sendSnmpv3GetRequestPrototype(OidVarConverted, Request_Type, nonRepeaters, maxRepetitions)
+
+	if len(rts.V3PDU.V2VarBind.VarBinds) == 0 {
+		return ReturnVal, errors.New("empty report")
+	}
+	if rts.V3PDU.V2VarBind.VarBinds[0].RSnmpOID.Equal(OID_NoInTime) {
+
+		stimeerr := Session.embeddedNoInTime(rts)
+		if stimeerr != nil {
+			return ReturnVal, stimeerr
+		}
+		rts, complexerr = Session.reportHandle(OidVarConverted, Request_Type, nonRepeaters, maxRepetitions, depth)
+		if complexerr != nil {
+			//Если есть серьезная ошибка, то выходим и возвращаем ее
+			if !errors.As(complexerr, &partialerr) {
+				ReturnError = complexerr
+				return ReturnVal, ReturnError
+			}
+		}
+		return rts, nil
+	}
+	if rts.V3PDU.V2VarBind.VarBinds[0].RSnmpOID.Equal(OID_UnknownEngineId) && depth == 1 {
+		discoer := Session.embeddedDiscovery(rts)
+		if discoer != nil {
+			return ReturnVal, fmt.Errorf("discovery failed: %v", discoer)
+		}
+
+		rts, complexerr = Session.reportHandle(OidVarConverted, Request_Type, nonRepeaters, maxRepetitions, depth)
+		if complexerr != nil {
+			//Если есть серьезная ошибка, то выходим и возвращаем ее
+			if !errors.As(complexerr, &partialerr) {
+				ReturnError = complexerr
+				return ReturnVal, ReturnError
+			}
+		}
+
+		return rts, nil
+
+	}
+	if rts.V3PDU.V2VarBind.VarBinds[0].RSnmpOID.Equal(OID_UnknownEngineId) && depth > 1 {
+		return ReturnVal, errors.New("unknown engine id - discovery already done")
+	}
+	if rts.V3PDU.V2VarBind.VarBinds[0].RSnmpOID.Equal(OID_WrongUsername) {
+		ReturnError = errors.New("wrong username")
+		return ReturnVal, ReturnError
+	}
+	if rts.V3PDU.V2VarBind.VarBinds[0].RSnmpOID.Equal(OID_WrongDigest) {
+		ReturnError = errors.New("wrong authkey")
+		return ReturnVal, ReturnError
+	}
+	if rts.V3PDU.V2VarBind.VarBinds[0].RSnmpOID.Equal(OID_DecryptionError) {
+		ReturnError = errors.New("decryption error")
+		return ReturnVal, ReturnError
+	}
+	if rts.V3PDU.V2VarBind.VarBinds[0].RSnmpOID.Equal(OID_UnknownContext) {
+		ReturnError = errors.New("unknown context")
+		return ReturnVal, ReturnError
+	}
+	if rts.V3PDU.V2VarBind.VarBinds[0].RSnmpOID.Equal(OID_UnsupportedSecLevels) {
+		ReturnError = errors.New("unsupported security levels")
+		return ReturnVal, ReturnError
+	}
+
+	ReturnError = fmt.Errorf("unknown REPORT OID: %v", rts.V3PDU.V2VarBind.VarBinds[0].RSnmpOID)
+	return ReturnVal, ReturnError
+}
+
 func (Session *SNMPv3Session) embeddedDiscovery(rts SNMPv3_DecodePacket) error {
 
 	if len(rts.V3PDU.V2VarBind.VarBinds) == 0 {
@@ -535,135 +632,19 @@ func (SNMPparameters *SNMPv3Session) snmpv3_GetSet(oidValue []SNMP_Packet_V2_Dec
 		if len(rts.V3PDU.V2VarBind.VarBinds) == 0 {
 			return ReturnVal, errors.New("empty report")
 		}
-		OID_NoInTime := []int{1, 3, 6, 1, 6, 3, 15, 1, 1, 2, 0}
-		OID_WrongUsername := []int{1, 3, 6, 1, 6, 3, 15, 1, 1, 3, 0}
-		OID_WrongDigest := []int{1, 3, 6, 1, 6, 3, 15, 1, 1, 5, 0}
-		OID_DecryptionError := []int{1, 3, 6, 1, 6, 3, 15, 1, 1, 6, 0}
-		OID_UnknownContext := []int{1, 3, 6, 1, 6, 3, 12, 1, 5, 0}
-		OID_UnsupportedSecLevels := []int{1, 3, 6, 1, 6, 3, 15, 1, 1, 1, 0}
-		OID_UnknownEngineId := []int{1, 3, 6, 1, 6, 3, 15, 1, 1, 4, 0}
-		if rts.V3PDU.V2VarBind.VarBinds[0].RSnmpOID.Equal(OID_NoInTime) {
-			//fmt.Println("NoInTime -> Must syc time and resend")
-			RecivedBoots := rts.SecuritySettings.Boots
-			RecivedTime := rts.SecuritySettings.Time
-			if RecivedBoots > 0 || RecivedTime > 0 {
-				// Некоторые SNMP агенты, при определении Engine ID не присылают Boots и Time
-				// поэтому их можно выставить после ополучения ошибки NoInTime с правильными значениями
-				SNMPparameters.SNMPparams.DiscoveredTimeBoots.Store(true)
-				atomic.StoreInt32(&SNMPparameters.SNMPparams.RBoots, RecivedBoots)
-				atomic.StoreInt32(&SNMPparameters.SNMPparams.RTime, RecivedTime)
-
-				rts, complexerr = SNMPparameters.sendDataAfterReport(OidVarConverted, Request_Type, nonRepeaters, maxRepetitions)
-				if complexerr != nil {
-					//Если есть серьезная ошибка, то выходим и возвращаем ее
-					if !errors.As(complexerr, &partialerr) {
-						ReturnError = complexerr
-						return nil, ReturnError
-					}
-				}
-				return rts.V3PDU.V2VarBind.VarBinds, nil
-
-			} else {
-				ReturnError = errors.New("time synchronization failed: boots and time are zero")
-				return ReturnVal, ReturnError
+		rts, complexerr = SNMPparameters.reportHandle(OidVarConverted, Request_Type, nonRepeaters, maxRepetitions, 0)
+		if complexerr != nil {
+			//Если есть серьезная ошибка, то выходим и возвращаем ее
+			if !errors.As(complexerr, &partialerr) {
+				ReturnError = complexerr
+				return nil, ReturnError
 			}
 		}
-		if rts.V3PDU.V2VarBind.VarBinds[0].RSnmpOID.Equal(OID_UnknownEngineId) {
-			discoer := SNMPparameters.embeddedDiscovery(rts)
-			if discoer != nil {
-				return ReturnVal, fmt.Errorf("discovery failed: %v", discoer) // исправить "discovere" -> "discovery"
-			}
-
-			rts, complexerr = SNMPparameters.sendDataAfterReport(OidVarConverted, Request_Type, nonRepeaters, maxRepetitions)
-			if complexerr != nil {
-				//Если есть серьезная ошибка, то выходим и возвращаем ее
-				if !errors.As(complexerr, &partialerr) {
-					ReturnError = complexerr
-					return nil, ReturnError
-				}
-			}
-
-			return rts.V3PDU.V2VarBind.VarBinds, nil
-
-		}
-		if rts.V3PDU.V2VarBind.VarBinds[0].RSnmpOID.Equal(OID_WrongUsername) {
-			ReturnError = errors.New("wrong username")
-			return ReturnVal, ReturnError
-		}
-		if rts.V3PDU.V2VarBind.VarBinds[0].RSnmpOID.Equal(OID_WrongDigest) {
-			ReturnError = errors.New("wrong authkey")
-			return ReturnVal, ReturnError
-		}
-		if rts.V3PDU.V2VarBind.VarBinds[0].RSnmpOID.Equal(OID_DecryptionError) {
-			ReturnError = errors.New("decryption error")
-			return ReturnVal, ReturnError
-		}
-		if rts.V3PDU.V2VarBind.VarBinds[0].RSnmpOID.Equal(OID_UnknownContext) {
-			ReturnError = errors.New("unknown context")
-			return ReturnVal, ReturnError
-		}
-		if rts.V3PDU.V2VarBind.VarBinds[0].RSnmpOID.Equal(OID_UnsupportedSecLevels) {
-			ReturnError = errors.New("unsupported security levels")
-			return ReturnVal, ReturnError
-		}
-
-		ReturnError = fmt.Errorf("unknown REPORT OID: %v", rts.V3PDU.V2VarBind.VarBinds[0].RSnmpOID)
-		return ReturnVal, ReturnError
+		return rts.V3PDU.V2VarBind.VarBinds, nil
 	} else {
 		ReturnVal = rts.V3PDU.V2VarBind.VarBinds
 	}
 	return ReturnVal, ReturnError
-}
-
-func (SNMPparameters *SNMPv3Session) sendDataAfterReport(OidVarConverted []SNMP_Packet_V2_VarBind, Request_Type int, nonRepeaters, maxRepetitions int32) (rdata SNMPv3_DecodePacket, rerr error) {
-	atomic.AddInt32(&SNMPparameters.SNMPparams.MessageId, 1)
-	atomic.AddInt32(&SNMPparameters.SNMPparams.MessageIDv2, 1)
-	var partialerr SNMPne_Errors
-	//Повторный запрос после discovery
-	rts, complexerr := SNMPparameters.sendSnmpv3GetRequestPrototype(OidVarConverted, Request_Type, nonRepeaters, maxRepetitions)
-	if complexerr != nil {
-		//Если есть серьезная ошибка, то выходим и возвращаем ее
-		if !errors.As(complexerr, &partialerr) {
-			return SNMPv3_DecodePacket{}, complexerr
-		}
-	}
-	if rts.MessageType == REPORT_MESSAGE {
-		if len(rts.V3PDU.V2VarBind.VarBinds) == 0 {
-			return SNMPv3_DecodePacket{}, errors.New("retry failed: empty report")
-		}
-		OID_NoInTime := []int{1, 3, 6, 1, 6, 3, 15, 1, 1, 2, 0}
-		OID_WrongUsername := []int{1, 3, 6, 1, 6, 3, 15, 1, 1, 3, 0}
-		OID_WrongDigest := []int{1, 3, 6, 1, 6, 3, 15, 1, 1, 5, 0}
-		OID_DecryptionError := []int{1, 3, 6, 1, 6, 3, 15, 1, 1, 6, 0}
-		OID_UnknownContext := []int{1, 3, 6, 1, 6, 3, 12, 1, 5, 0}
-		OID_UnsupportedSecLevels := []int{1, 3, 6, 1, 6, 3, 15, 1, 1, 1, 0}
-		OID_UnknownEngineId := []int{1, 3, 6, 1, 6, 3, 15, 1, 1, 4, 0}
-		if rts.V3PDU.V2VarBind.VarBinds[0].RSnmpOID.Equal(OID_WrongUsername) {
-			return SNMPv3_DecodePacket{}, errors.New("wrong username")
-		}
-		if rts.V3PDU.V2VarBind.VarBinds[0].RSnmpOID.Equal(OID_WrongDigest) {
-			return SNMPv3_DecodePacket{}, errors.New("wrong authkey")
-		}
-		if rts.V3PDU.V2VarBind.VarBinds[0].RSnmpOID.Equal(OID_DecryptionError) {
-			return SNMPv3_DecodePacket{}, errors.New("decryption error")
-		}
-		if rts.V3PDU.V2VarBind.VarBinds[0].RSnmpOID.Equal(OID_UnknownContext) {
-			return SNMPv3_DecodePacket{}, errors.New("unknown context")
-		}
-		if rts.V3PDU.V2VarBind.VarBinds[0].RSnmpOID.Equal(OID_NoInTime) {
-			return SNMPv3_DecodePacket{}, errors.New("retry failed: no in time twice")
-		}
-		if rts.V3PDU.V2VarBind.VarBinds[0].RSnmpOID.Equal(OID_UnknownEngineId) {
-
-			return SNMPv3_DecodePacket{}, errors.New("retry failed: unknown engine id twice")
-		}
-		if rts.V3PDU.V2VarBind.VarBinds[0].RSnmpOID.Equal(OID_UnsupportedSecLevels) {
-			return SNMPv3_DecodePacket{}, errors.New("unsupported security levels")
-		}
-
-		return SNMPv3_DecodePacket{}, fmt.Errorf("retry failed: unknown REPORT OID: %v", rts.V3PDU.V2VarBind.VarBinds[0].RSnmpOID)
-	}
-	return rts, complexerr
 }
 
 // SNMP_Walk performs complete SNMP WALK starting from base OID using GETNEXT.
