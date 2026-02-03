@@ -83,7 +83,7 @@ func TestConvert_bytearray_to_uint(t *testing.T) {
 
 func TestConvert_OID_IntArrayToString_DER(t *testing.T) {
 	//69533774
-	TestIntArry := []byte{1, 3, 6, 0x86, 0x8d, 0x1f, 2, 1, 47, 1, 3, 2, 1, 2, 0x86, 0x8d, 0x1f, 1}
+	TestIntArry := []byte{43, 6, 0x86, 0x8d, 0x1f, 2, 1, 47, 1, 3, 2, 1, 2, 0x86, 0x8d, 0x1f, 1}
 	Str2 := Convert_OID_IntArrayToString_DER(Convert_bytearray_to_intarray(TestIntArry))
 	if Str2 != "1.3.6.99999.2.1.47.1.3.2.1.2.99999.1" {
 		t.Errorf("Error in TestConvert_bytearray_to_int, try to convert: []byte{1, 3, 6, 0x86, 0x8d, 0x1f, 2, 1, 47, 1, 3, 2, 1, 2, 0x86, 0x8d, 0x1f, 1} to int, expected 1.3.6.99999.2.1.47.1.3.2.1.2.99999.1, but got: %s", Str2)
