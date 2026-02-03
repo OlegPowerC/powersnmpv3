@@ -174,20 +174,45 @@ func Convert_OID_IntArrayToString_DER(OIDIntArray []int) (OIDStr string) {
 	largevalue := false
 	for varind, val := range OIDIntArray {
 		if val >= 0x80 {
+			//Сдвигаем аккумулятор на 7 бит (эквивалентно умножению на 128)
 			IntPmFirstByte = IntPmFirstByte * 128
+			//Прибавляем 7 младших бит val, сдвинутых на 7 бит
 			IntPmFirstByte = IntPmFirstByte + ((val - 0x80) * 128)
+			//Устанавливаем флаг, что у нас большое число
 			largevalue = true
 			continue
 		}
-		//Тут значение уже меньше 0x80 но если предыдущие были больше то это последний байт в мультибайтовом значении ASN.1
+		//Тут значение уже меньше 0x80, но если предыдущие были больше то это последний байт в мультибайтовом значении ASN.1
 		if largevalue {
 			pmdatafull := IntPmFirstByte + val
-			RetStr += strconv.Itoa(pmdatafull)
+			//Первое значение в OID
+			if RetStr == "" {
+				var x, y int
+				if pmdatafull < 40 {
+					x, y = 0, pmdatafull
+				} else if pmdatafull < 80 {
+					x, y = 1, pmdatafull-40
+				} else {
+					x, y = 2, pmdatafull-80
+				}
+				RetStr += strconv.Itoa(x) + "." + strconv.Itoa(y)
+			} else {
+				RetStr += strconv.Itoa(pmdatafull)
+			}
 			largevalue = false
 		} else {
 			//первый байт 0x2b (43) заменяется на 1.3
-			if varind == 0 && val == 0x2b {
-				RetStr += "1.3"
+			if varind == 0 {
+				// Первый байт OID: декодируем X*40+Y → X.Y
+				var x, y int
+				if val < 40 {
+					x, y = 0, val
+				} else if val < 80 {
+					x, y = 1, val-40
+				} else {
+					x, y = 2, val-80
+				}
+				RetStr += strconv.Itoa(x) + "." + strconv.Itoa(y)
 			} else {
 				RetStr += strconv.Itoa(val)
 			}
@@ -262,6 +287,63 @@ func Convert_bytearray_to_intarray_with_multibyte_data(bytearray []byte) (intarr
 		retvar = append(retvar, ivaltoa)
 	}
 	return retvar
+}
+
+// Convert_bytearray_OID_with_multibyte_data_to_int_array decodes DER-encoded ASN.1 OID from byte array to integer array.
+//
+// Decodes:
+// - First byte as two components: 40*X + Y where X∈{0,1,2}, Y∈{0-39}
+// - Subsequent components using ASN.1 base-128 encoding (7 bits/byte)
+//
+// Returns error for incomplete multibyte sequences at end.
+//
+// Examples:
+//
+//	[]byte{0x2B, 0x06, 0x01} → []int{1, 3, 6, 1}, nil  // 1.3.6.1
+//	[]byte{0x81}             → [], err "incomplete multibyte"
+//
+// Conforms to ITU-T X.690 §8.19.
+func Convert_bytearray_OID_with_multibyte_data_to_int_array(bytearray []byte) ([]int, error) {
+	retvar := make([]int, 0)
+	multibyte_val := 0
+	ivaltoa := 0
+	largevalue := false
+	for _, val := range bytearray {
+		if val >= 0x80 {
+			multibyte_val = multibyte_val * 128
+			multibyte_val = multibyte_val + ((int(val) - 0x80) * 128)
+			largevalue = true
+			continue
+		}
+		//Тут значение уже меньше 0x80 но если предыдущие были больше то это последний байт в мультибайтовом значении ASN.1
+		if largevalue {
+			pmdatafull := multibyte_val + int(val)
+			ivaltoa = pmdatafull
+			largevalue = false
+		} else {
+			ivaltoa = int(val)
+		}
+		multibyte_val = 0
+		//Проверка на первое число
+		if len(retvar) == 0 {
+			var x, y int
+			if ivaltoa < 40 {
+				x, y = 0, ivaltoa
+			} else if ivaltoa < 80 {
+				x, y = 1, ivaltoa-40
+			} else {
+				x, y = 2, ivaltoa-80
+			}
+			retvar = append(retvar, x, y)
+		} else {
+			retvar = append(retvar, ivaltoa)
+		}
+
+	}
+	if largevalue {
+		return retvar, fmt.Errorf("incomplete multibyte sequence at end of OID")
+	}
+	return retvar, nil
 }
 
 // Convert_snmpint_to_int32 - INTERNAL. SNMP INTEGER value bytes → int32.
