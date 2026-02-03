@@ -53,7 +53,7 @@ func main() {
 	Ssess, SsessError := PowerSNMP.SNMP_Init(RouterDev)
 	if SsessError != nil {
 		fmt.Println(SsessError)
-		os.Exit(1)
+		os.Exit(0)
 	}
 
 	if Ssess == nil {
