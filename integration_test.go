@@ -31,7 +31,7 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-func TestSNMPv3Session_SNMP_Get_Set_Walk(t *testing.T) {
+func TestSNMPv3Session_SNMP_Get_Set(t *testing.T) {
 	var Nhost NetworkDevice
 	Nhost.IPaddress = *Host
 	Nhost.Port = 161
@@ -273,6 +273,28 @@ func TestSNMPv3Session_SNMP_Get_Set_Walk(t *testing.T) {
 	}
 	t.Log("-------- End --------")
 
+}
+
+func TestSNMPv3Session_SNMP_Get_Walk(t *testing.T) {
+	var Nhost NetworkDevice
+	Nhost.IPaddress = *Host
+	Nhost.Port = 161
+	Nhost.SNMPparameters.SNMPversion = 3
+	Nhost.SNMPparameters.Username = *SNMPuser
+	Nhost.SNMPparameters.AuthProtocol = *SNMPauthProtocol
+	Nhost.SNMPparameters.AuthKey = *SNMPauthPassword
+	Nhost.SNMPparameters.PrivProtocol = *SNMPprivProtocol
+	Nhost.SNMPparameters.PrivKey = *SNMPprivPassword
+	Nhost.SNMPparameters.Community = *SNMPcommunity
+	Nhost.SNMPparameters.TimeoutBtwRepeat = 500
+	Nhost.SNMPparameters.RetryCount = 3
+	Ssess, SsessError := SNMP_Init(Nhost)
+	if SsessError != nil {
+		t.Errorf("Error in SNMPInit: %v", SsessError.Error())
+	}
+	if Ssess == nil {
+		t.Fatal("Error in SNMPInit")
+	}
 	t.Log("-------- Walk from OID 1.3.6.1.2.1.2.2.1.2 V3 --------")
 	StrOidW := "1.3.6.1.2.1.2.2.1.2"
 	IoidW, _ := ParseOID(StrOidW)
@@ -370,5 +392,4 @@ func TestSNMPv3Session_SNMP_Get_Set_Walk(t *testing.T) {
 		t.Errorf("SNMP v3  Error in Close: %s", Close3Errv2.Error())
 	}
 	t.Log("-------- End --------")
-
 }
