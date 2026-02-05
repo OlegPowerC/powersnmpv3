@@ -46,10 +46,10 @@ func TestSNMPv3Session_SNMP_Get_Set(t *testing.T) {
 	Nhost.SNMPparameters.RetryCount = 3
 	Ssess, SsessError := SNMP_Init(Nhost)
 	if SsessError != nil {
-		t.Errorf("Error in SNMPInit: %v", SsessError.Error())
+		t.Fatalf("Error in SNMPInit: %v", SsessError.Error())
 	}
 	if Ssess == nil {
-		t.Fatal("Error in SNMPInit")
+		t.Fatal("Error in SNMPInit - Session is nil")
 	}
 
 	t.Log("-------- Get single oid V2 --------")
@@ -115,9 +115,11 @@ func TestSNMPv3Session_SNMP_Get_Set(t *testing.T) {
 	}
 	t.Log("-------- End --------")
 
-	CloseErr := Ssess.Close()
-	if CloseErr != nil {
-		t.Errorf("SNMP v2  Error in Close: %s", CloseErr.Error())
+	if Ssess != nil {
+		CloseErr := Ssess.Close()
+		if CloseErr != nil {
+			t.Errorf("SNMP v2  Error in Close: %s", CloseErr.Error())
+		}
 	}
 
 	t.Log("-------- Sitch to V3 --------")
@@ -125,7 +127,7 @@ func TestSNMPv3Session_SNMP_Get_Set(t *testing.T) {
 
 	Ssess, SsessError = SNMP_Init(Nhost)
 	if SsessError != nil {
-		t.Errorf("SNMP v3 Error in SNMPInit: %s", SsessError.Error())
+		t.Fatalf("SNMP v3 Error in SNMPInit: %s", SsessError.Error())
 	}
 
 	t.Log("-------- Set single oids V3 --------")
@@ -290,7 +292,7 @@ func TestSNMPv3Session_SNMP_Get_Walk(t *testing.T) {
 	Nhost.SNMPparameters.RetryCount = 3
 	Ssess, SsessError := SNMP_Init(Nhost)
 	if SsessError != nil {
-		t.Errorf("Error in SNMPInit: %v", SsessError.Error())
+		t.Fatalf("Error in SNMPInit: %v", SsessError.Error())
 	}
 	if Ssess == nil {
 		t.Fatal("Error in SNMPInit")
@@ -345,7 +347,7 @@ func TestSNMPv3Session_SNMP_Get_Walk(t *testing.T) {
 	Nhost.SNMPparameters.SNMPversion = 2
 	Ssess, SsessError = SNMP_Init(Nhost)
 	if SsessError != nil {
-		t.Errorf("Error in V2 SNMPInit: %v", SsessError.Error())
+		t.Fatalf("Error in V2 SNMPInit: %v", SsessError.Error())
 	}
 	if Ssess == nil {
 		t.Fatal("Error in SNMPInit")
