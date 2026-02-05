@@ -1135,9 +1135,6 @@ func SNMPPDUErrorIntToText(code int) string {
 func setAuthPrivParamsStToInt(authproto string, authkey string, privproto string, privkey string) (seclevel int, intauth int, intprivparam int, err error) {
 	AuthProtoString := strings.ToLower(strings.TrimSpace(authproto))
 	PrivProtoString := strings.ToLower(strings.TrimSpace(privproto))
-	seclevel = SECLEVEL_NOAUTH_NOPRIV
-	intauth = AUTH_PROTOCOL_NONE
-	intprivparam = PRIV_PROTOCOL_NONE
 	switch AuthProtoString {
 	case "sha":
 		intauth = AUTH_PROTOCOL_SHA
