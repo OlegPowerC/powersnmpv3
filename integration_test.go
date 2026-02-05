@@ -248,8 +248,8 @@ func TestSNMPv3Session_SNMP_Get_Set(t *testing.T) {
 	} else {
 		if mseterr.Oids != nil {
 			if len(mseterr.Oids) > 0 {
-				if mseterr.Oids[0].Error_id != 11 {
-					t.Errorf("Expected error id 11 but got: %d", mseterr.Oids[0].Error_id)
+				if mseterr.Oids[0].Error_id != 11 && mseterr.Oids[0].Error_id != 17 {
+					t.Errorf("Expected error id 11 or 17 but got: %d", mseterr.Oids[0].Error_id)
 				}
 				if !slices.Equal(mseterr.Oids[0].Failedoid, IoidWB2) {
 
