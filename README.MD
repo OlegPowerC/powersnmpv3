@@ -115,13 +115,15 @@ sess, err := snmp.SNMP_Init(device)
 // ...
 ```
 
+---
+
 ### Smart Session Parameters
 
-| Parameter            | Default    | Feature                                     |
-|----------------------|------------|---------------------------------------------|
-| **TimeoutBtwRepeat** | 300ms      | `base × (attempt+1)`: 300→600→900ms backoff |
-| **MaxMsgSize**       | 1360 bytes | Like TCP MSS — prevents IP fragmentation    |
-| **MaxRepetitions**   | 25         | BulkWalk without packet loss                |
+| Parameter            | Default    | Feature                                                                 |
+|----------------------|------------|-------------------------------------------------------------------------|
+| **TimeoutBtwRepeat** | 300ms      | `base × (attempt+1)`: 300→600→900ms backoff                             |
+| **MaxMsgSize**       | 1360 bytes | Like TCP MSS — prevents IP fragmentation                                |
+| **MaxRepetitions**   | 25         | Maximum number of table rows returned per iteration in GetBulk requests |
 
 ---
 
@@ -166,7 +168,7 @@ type SNMPUserParameters struct {
 | SNMPversion      | int    | SNMP version, 2 for v2c, 3 for v3                                                                                                                                                                                                                              |
 | Username         | string | USM User for SNMP v3                                                                                                                                                                                                                                           |
 | AuthKey          | string | Authentication password for v3                                                                                                                                                                                                                                 |
-| AuthProtocol     | string | "md5", "sha", "sha224", "sha256", "sha384", "sha512"                                                                                                                                                                                                           |
+| AuthProtocol     | string | Authentication protocol "md5", "sha", "sha224", "sha256", "sha384", "sha512"                                                                                                                                                                                   |
 | PrivKey          | string | Privacy password for v3                                                                                                                                                                                                                                        |
 | PrivProtocol     | string | "des", "aes", "aes192", "aes256", "aes192a", "aes256a"                                                                                                                                                                                                         |
 | ContextName      | string | Optional SNMP v3 context name. For example, to retrieve a MAC address table for VLAN 10 on a Cisco switch, specify the vlan-10 context                                                                                                                         |
@@ -865,7 +867,7 @@ Examples: network timeout, authentication error, `notWritable`.
 
 #### SNMPne_Errors - Partial Errors
 
-Part of request completed successfully. **Results are available!**
+Part of request completed successfully. **Results are available if AllOIDsFail=false**
 
 ```
 type SNMPne_Errors struct {

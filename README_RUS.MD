@@ -5,6 +5,15 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![LibHunt](https://img.shields.io/badge/LibHunt-trending-brightgreen)](https://www.libhunt.com/r/powersnmpv3)
 
+📖 **Оглавление:**
+- [Установка](#Установка)
+- [Быстрый старт](#Быстрый-старт)
+- [Обработка ошибки несоответствия уровня безопасности](#Обработка-ошибки-несоответствия-уровня-безопасности)
+- [Обработка ошибок](#Обработка-ошибок)
+- [Протзводительность](#Производительность)
+- [Примеры](#Примеры)
+---
+
 
 **SNMP v2c/v3 библиотека на чистом Go**
 
@@ -107,6 +116,17 @@ sess, err := snmp.SNMP_Init(device)
 
 ---
 
+### Параметры сессии для работы на различных каналах
+
+| Параметр             | Значение по умолчанию | Описание                                                                                                                                                                                   |
+|----------------------|-----------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **TimeoutBtwRepeat** | 300ms                 | с каждой попыткой таймаут увеличивается как: `base × (attempt+1)`: 300→600→900ms                                                                                                           |
+| **MaxMsgSize**       | 1360 байт             | Максимальный размер данных (UDP payload), которые агент может передать в одной татаграмме, работа схожа с TCP MSS, подбирая значение под конкретный канал, можно избежать IP фрагментации  |
+| **MaxRepetitions**   | 25                    | Максимальное количество строк таблицы за итерацию в GetBulk                                                                                                                                |
+
+
+---
+
 ## Типы данных
 
 ### NetworkDevice
@@ -128,19 +148,34 @@ type NetworkDevice struct {
 
 ```
 type SNMPUserParameters struct {
-    SNMPversion      int    // 2 для v2c, 3 для v3
-    Username         string // Имя пользователя (v3)
-    AuthKey          string // Пароль аутентификации (v3)
+    SNMPversion      int    // 2 for v2c, 3 for v3
+    Username         string // Username (v3)
+    AuthKey          string // Authentication password (v3)
     AuthProtocol     string // "md5", "sha", "sha224", "sha256", "sha384", "sha512"
-    PrivKey          string // Пароль шифрования (v3)
+    PrivKey          string // Privacy password (v3)
     PrivProtocol     string // "des", "aes", "aes192", "aes256", "aes192a", "aes256a"
-    ContextName      string // Контекст SNMPv3 (опционально)
-    RetryCount       int    // Количество повторов (1-10, по умолчанию 3)
-    TimeoutBtwRepeat int    // Таймаут между повторами в мс (по умолчанию 300)
-    MaxRepetitions   uint16 // Макс. повторений для BulkWalk (по умолчанию 25)
+    ContextName      string // SNMPv3 context (optional)
+    RetryCount       int    // Retry count (1-10, default 3)
+    TimeoutBtwRepeat int    // Timeout between retries in ms (default 300)
+    MaxRepetitions   uint16 // Max repetitions for BulkWalk (default 25)
+    MaxMsgSize       uint16 // Max SNMP v3 message size
     Community        string // Community string (v2c)
 }
 ```
+| Параметр         | тип    | опимание                                                                                                                          |
+|------------------|--------|-----------------------------------------------------------------------------------------------------------------------------------|
+| SNMPversion      | int    | версия SNMP, 2 для v2c, 3 для v3                                                                                                  |
+| Username         | string | Имя пользователя USM для SNMP v3                                                                                                  |
+| AuthKey          | string | Ключ аутентификации, для v3                                                                                                       |
+| AuthProtocol     | string | Протокол аутентификации "md5", "sha", "sha224", "sha256", "sha384", "sha512"                                                      |
+| PrivKey          | string | Ключ шифрования, для v3                                                                                                           |
+| PrivProtocol     | string | Протокол шифрования "des", "aes", "aes192", "aes256", "aes192a", "aes256a"                                                        |
+| ContextName      | string | Контекст для SNMP v3 (опционально). К примеру для получения MAC адресов в VLAN 10 на коммутаторах Cisco, укажите контекст vlan-10 |
+| RetryCount       | int    | Количество попыток запроса (1-10, по умолчанию 3)                                                                                 |
+| TimeoutBtwRepeat | int    | Таймаут между запросами (default 300). Используется линейное возрастание таймаута: timeout = base × (attempt + 1)                 |
+| MaxRepetitions   | uint16 | Максимальное количество строк таблицы за итерацию в GetBulk (по умолчанию 25)                                                     |
+| MaxMsgSize       | Uint16 | Максимальный размер данных (UDP payload), которые агент может передать в одной татаграмме                                         |
+
 
 ### SNMPv3Session
 
@@ -517,6 +552,205 @@ typeStr := snmp.Convert_ClassTag_to_String(varbind.RSnmpVar)
 ```
 
 ---
+### Функции проверки типа
+
+Функции проверяют тип SNMP значения. Возвращают `true` если тип данных значения, является соответствующим типом ASN.1.
+
+#### IsBoolean
+
+Проверят является ли SNMPVar классом Universal типом BOOLEAN (Tag 1).
+```
+func IsBoolean(Val SNMPVar) bool
+```
+
+**Подробное описание типа:** Class=0, Constructed=0, Tag=1 (0x01)
+
+**Пример:**
+```
+if snmp.IsBoolean(varbind.RSnmpVar) {
+    fmt.Println("Boolean value:", varbind.RSnmpVar.Value[0] != 0)
+}
+```
+
+#### IsInteger
+
+Проверят является ли SNMPVar классом Universal типом INTEGER (Tag 2).
+```
+func IsInteger(Val SNMPVar) bool
+```
+
+**Подробное описание типа:** Class=0, Constructed=0, Tag=2 (0x02)
+
+**Пример:**
+```
+if snmp.IsInteger(varbind.RSnmpVar) {
+    value := snmp.Convert_snmpint_to_int32(varbind.RSnmpVar.Value)
+    fmt.Println("Integer:", value)
+}
+```
+
+#### IsBitstring
+
+Проверят является ли SNMPVar классом Universal типом BIT STRING (Tag 3).
+```
+func IsBitstring(Val SNMPVar) bool
+```
+
+**Подробное описание типа:** Class=0, Constructed=0, Tag=3 (0x03)
+
+#### IsOctetString
+
+Проверят является ли SNMPVar классом Universal типом OCTET STRING (Tag 4).
+```
+func IsOctetString(Val SNMPVar) bool
+```
+
+**Подробное описание типа:** Class=0, Constructed=0, Tag=4 (0x04)  
+**Используется для:** sysName, sysLocation и прочего
+
+**Пример:**
+```
+if snmp.IsOctetString(varbind.RSnmpVar) {
+    str := string(varbind.RSnmpVar.Value)
+    fmt.Println("String:", str)
+}
+```
+
+#### IsNull
+
+Проверят является ли SNMPVar классом Universal типом NULL (Tag 5).
+```
+func IsNull(Val SNMPVar) bool
+```
+
+**Подробное описание типа:** Class=0, Constructed=0, Tag=5 (0x05)
+
+**Пример:**
+```
+if snmp.IsNull(varbind.RSnmpVar) {
+    fmt.Println("NULL value")
+}
+```
+
+#### IsOid
+
+Проверят является ли SNMPVar классом Universal типом OID (Tag 6).
+```
+func IsOid(Val SNMPVar) bool
+```
+
+**Подробное описание типа:** Class=0, Constructed=0, Tag=6 (0x06)  
+**Used in:** OID value processing
+
+**Пример:**
+```
+if snmp.IsOid(varbind.RSnmpVar) {
+    oidArray := snmp.Convert_bytearray_to_intarray(varbind.RSnmpVar.Value)
+    oidStr := snmp.Convert_OID_IntArrayToString_DER(oidArray)
+    fmt.Println("OID:", oidStr)
+}
+```
+
+#### IsIpaddr
+
+Проверят является ли SNMPVar классом Application типом IPADDRESS (Tag 0).
+```
+func IsIpaddr(Val SNMPVar) bool
+```
+
+**Подробное описание типа:** Class=1, Constructed=0, Tag=0 (0x40)  
+**Используется для:** ipAdEntAddr, определения типа с IP адресом.
+
+#### IsCounter32
+
+Проверят является ли SNMPVar классом Application типом Counter32 (Tag 1).
+```
+func IsCounter32(Val SNMPVar) bool
+```
+
+**Подробное описание типа:** Class=1, Constructed=0, Tag=1 (0x41)
+
+**Пример:**
+```
+if snmp.IsCounter32(varbind.RSnmpVar) {
+    counter := snmp.Convert_snmpint_to_int32(varbind.RSnmpVar.Value)
+    fmt.Printf("Counter32: %d\n", counter)
+}
+```
+
+#### IsGauge32
+
+Проверят является ли SNMPVar классом Application типом Gauge32 (Tag 2).
+```
+func IsGauge32(Val SNMPVar) bool
+```
+
+**Подробное описание типа:** Class=1, Constructed=0, Tag=2 (0x42)
+
+**Пример:**
+```
+if snmp.IsGauge32(varbind.RSnmpVar) {
+    gauge := snmp.Convert_snmpint_to_int32(varbind.RSnmpVar.Value)
+    fmt.Printf("Gauge32: %d\n", gauge)
+}
+```
+
+#### IsTimetick
+
+Проверят является ли SNMPVar классом Application типом Timeticks (Tag 3).
+```
+func IsTimetick(Val SNMPVar) bool
+```
+
+**Подробное описание типа:** Class=1, Constructed=0, Tag=3 (0x43)  
+**Используется для:** sysUpTime.0, прочих значений содержащих время
+
+**Пример:**
+```
+if snmp.IsTimetick(varbind.RSnmpVar) {
+    ticks := snmp.Convert_bytearray_to_int(varbind.RSnmpVar.Value)
+    duration := time.Duration(ticks * 10 * time.Millisecond)
+    fmt.Println("Uptime:", duration.String())
+}
+```
+
+#### IsOpaque
+
+Проверят является ли SNMPVar классом Application типом Opaque (Tag 4).
+```
+func IsOpaque(Val SNMPVar) bool
+```
+
+**Подробное описание типа:** Class=1, Constructed=0, Tag=4 (0x44)  
+**Используется для:** Бинарных данных
+
+**Пример:**
+```
+if snmp.IsOpaque(varbind.RSnmpVar) {
+    hexStr := hex.EncodeToString(varbind.RSnmpVar.Value)
+    fmt.Println("Opaque (hex):", hexStr)
+}
+```
+
+#### IsCounter64
+
+Проверят является ли SNMPVar классом Application типом Counter64 (Tag 6).
+```
+func IsCounter64(Val SNMPVar) bool
+```
+
+**Подробное описание типа:** Class=1, Constructed=0, Tag=6 (0x46)  
+**Используется для:** счетчиков с большой емкостью
+
+**Пример:**
+```
+if snmp.IsCounter64(varbind.RSnmpVar) {
+    counter := snmp.Convert_bytearray_to_uint(varbind.RSnmpVar.Value)
+    fmt.Printf("Counter64: %d\n", counter)
+}
+```
+
+---
 
 ### Обработка TRAP/INFORM
 
@@ -629,10 +863,11 @@ type SNMPfe_Errors struct {
 
 #### SNMPne_Errors - Частичные ошибки
 
-Часть запроса выполнена успешно. **Результаты доступны!**
+Часть запроса выполнена успешно. **Результаты доступны если AllOIDsFail = false**
 
 ```
 type SNMPne_Errors struct {
+    AllOIDsFail bool
     Failedoids []PowerSNMPv3_Errors_FailedOids_Error
 }
 
@@ -699,6 +934,338 @@ for _, vb := range results {
 }
 ```
 
+### разница в обработке ошибок в gosnmp и PowerSNMPv3 
+
+#### Gosnmp:
+
+**Пример кода:**
+```
+    fmt.Println("=== MULTI GET ===")
+    oids := []string{
+    "1.3.6.1.2.1.1.5.0",   // sysName
+    "1.3.6.1.2.1.1.6.0",   // sysLocation
+    "1.3.6.1.2.1.1.99.0",  // invalid oid (will be noSuchObject)
+    "1.3.6.1.2.1.1.100.0", // invalid oid (will be noSuchObject)
+    }
+
+	result, err := params.Get(oids)
+	fmt.Println("--- Check errors ---")
+	if err != nil {
+		fmt.Printf("MultiGet ERROR: %v\n", err)
+	} else {
+		fmt.Println("- NO Errors -")
+		fmt.Println("--- Print result ---")
+		for i, pdu := range result.Variables {
+			fmt.Printf("OID[%d]: %s = ", i, pdu.Name)
+			switch pdu.Type {
+			case gosnmp.OctetString:
+				fmt.Printf("%s\n", string(pdu.Value.([]byte)))
+			case gosnmp.NoSuchObject:
+				fmt.Printf("NoSuchObject\n")
+			default:
+				fmt.Printf("%v (%s)\n", pdu.Value, pdu.Type)
+			}
+		}
+	}
+
+	fmt.Println("=== MULTI SET ===")
+	vars := []gosnmp.SnmpPDU{
+		{
+			Name:  "1.3.6.1.2.1.1.6.0", // sysLocation
+			Type:  gosnmp.OctetString,
+			Value: []byte("Test from gosnmp"),
+		},
+		{
+			Name:  "1.3.6.1.2.1.1.99.0", // Wrong OID
+			Type:  gosnmp.OctetString,
+			Value: []byte("Should fail"),
+		},
+	}
+
+	resultSet, err := params.Set(vars)
+	fmt.Println("--- Check errors ---")
+	if err != nil {
+		fmt.Printf("MultiSet ERROR: %v\n", err)
+	} else {
+		fmt.Println("- NO Errors -")
+		fmt.Println("--- Print result ---")
+		for i, pdu := range resultSet.Variables {
+			fmt.Printf("OID[%d]: %s = ", i, pdu.Name)
+			switch pdu.Type {
+			case gosnmp.OctetString:
+				fmt.Printf("%s\n", string(pdu.Value.([]byte)))
+			case gosnmp.NoSuchObject:
+				fmt.Printf("NoSuchObject\n")
+			default:
+				fmt.Printf("%v (%s)\n", pdu.Value, pdu.Type)
+			}
+		}
+	}
+
+	fmt.Println("explicit check errors (resultSet.Error,resultSet.ErrorIndex)", resultSet.Error, resultSet.ErrorIndex)
+
+	fmt.Println("=== Get 1.3.6.1.2.1.1.6.0 ===")
+	oids = []string{
+		"1.3.6.1.2.1.1.6.0", // sysLocation
+	}
+
+	result, err = params.Get(oids)
+	if err != nil {
+		fmt.Printf("Get ERROR: %v\n", err)
+	} else {
+		for i, pdu := range result.Variables {
+			fmt.Println("- NO Errors -")
+			fmt.Println("--- Print result ---")
+			fmt.Printf("OID[%d]: %s = ", i, pdu.Name)
+			switch pdu.Type {
+			case gosnmp.OctetString:
+				fmt.Printf("%s\n", string(pdu.Value.([]byte)))
+			case gosnmp.NoSuchObject:
+				fmt.Printf("NoSuchObject\n")
+			default:
+				fmt.Printf("%v (%s)\n", pdu.Value, pdu.Type)
+			}
+		}
+	}
+```
+
+Результат:
+
+```
+=== MULTI GET ===
+--- Check errors ---
+- NO Errors -
+  --- Print result ---
+  OID[0]: .1.3.6.1.2.1.1.5.0 = powercsw01.powerc
+  OID[1]: .1.3.6.1.2.1.1.6.0 = Test 6.0
+  OID[2]: .1.3.6.1.2.1.1.99.0 = NoSuchObject
+  OID[3]: .1.3.6.1.2.1.1.100.0 = NoSuchObject
+  === MULTI SET ===
+  --- Check errors ---
+- NO Errors -
+  --- Print result ---
+  OID[0]: .1.3.6.1.2.1.1.6.0 = Test from gosnmp
+  OID[1]: .1.3.6.1.2.1.1.99.0 = Should fail
+  explicit check errors (resultSet.Error,resultSet.ErrorIndex) NoCreation 2
+  === Get 1.3.6.1.2.1.1.6.0 ===
+- NO Errors -
+  --- Print result ---
+  OID[0]: .1.3.6.1.2.1.1.6.0 = Test 6.0
+```
+
+#### PowerSNMPv3:
+
+Пример кода:
+```
+fmt.Println("=== MULTI GET ===")
+OidsStrings := []string{"1.3.6.1.2.1.1.6.0", "1.3.6.1.2.1.1.99.0", "1.3.6.1.2.1.1.5.0", "1.3.6.1.2.1.1.100.0"}
+OidsConverted := []PowerSNMP.SNMP_Packet_V2_Decoded_VarBind{}
+
+	for _, OidSting := range OidsStrings {
+		Ioid, IoidErr := PowerSNMP.Convert_OID_StringToIntArray_RAW(OidSting)
+		if IoidErr != nil {
+			fmt.Println(IoidErr)
+			return
+		}
+		OidsConverted = append(OidsConverted, PowerSNMP.SNMP_Packet_V2_Decoded_VarBind{Ioid, PowerSNMP.SNMPvbNullValue})
+	}
+	GetRes2, verr2 := Ssess.SNMP_GetMulti(OidsConverted)
+
+	fmt.Println("--- Check errors ---")
+	if verr2 != nil {
+		snmpErr, commonErr := PowerSNMP.ParseError(verr2)
+		if commonErr != nil {
+			// Network error, cryptography, etc.
+			fmt.Println("Network/system error:", commonErr)
+		}
+
+		if snmpErr.IsFatal {
+			// Fatal SNMP error
+			fmt.Println("Fatal SNMP error, results are not available")
+			for _, descr := range snmpErr.Oids {
+				fmt.Println("Error description:", descr.ErrorDescription, descr)
+			}
+		}
+
+		// Partial error - results are available!
+		fmt.Printf("Partial error, %d OIDs failed:", len(snmpErr.Oids))
+		for _, oidErr := range snmpErr.Oids {
+			fmt.Printf("  | %s", oidErr.ErrorDescription)
+		}
+		fmt.Println("")
+	} else {
+		fmt.Println("- NO Errors -")
+	}
+
+	fmt.Println("--- Print result ---")
+	for _, wl := range GetRes2 {
+		fmt.Println(PowerSNMP.Convert_OID_IntArrayToString_RAW(wl.RSnmpOID), "=", PowerSNMP.Convert_Variable_To_String(wl.RSnmpVar), ":", PowerSNMP.Convert_ClassTag_to_String(wl.RSnmpVar))
+	}
+
+	fmt.Println("=== MULTI SET ===")
+	VarData := []PowerSNMP.SNMPVar{PowerSNMP.SetSNMPVar_OctetString("Test 6.0"), PowerSNMP.SetSNMPVar_OctetString("Test 99.0"), PowerSNMP.SetSNMPVar_OctetString("Test 5.0")}
+	SetStringOids := []string{"1.3.6.1.2.1.1.6.0", "1.3.6.1.2.1.1.99.0", "1.3.6.1.2.1.1.5.0"}
+	SetDataVB := []PowerSNMP.SNMP_Packet_V2_Decoded_VarBind{}
+	if len(VarData) == len(SetStringOids) {
+		for VdataInd, StoidS := range SetStringOids {
+			IoidS, IoidErrS := PowerSNMP.Convert_OID_StringToIntArray_RAW(StoidS)
+			if IoidErrS != nil {
+				fmt.Println(IoidErrS)
+				return
+			}
+			SetDataVB = append(SetDataVB, PowerSNMP.SNMP_Packet_V2_Decoded_VarBind{IoidS, VarData[VdataInd]})
+		}
+	} else {
+		fmt.Println("Mismatch oids and data")
+		return
+	}
+
+	sdata, verres3 := Ssess.SNMP_SetMulti(SetDataVB)
+	fmt.Println("--- Check errors ---")
+	if verres3 != nil {
+		snmpErr, commonErr := PowerSNMP.ParseError(verres3)
+		if commonErr != nil {
+			// Network error, cryptography, etc.
+			fmt.Println("Network/system error:", commonErr)
+		}
+		if snmpErr.IsFatal {
+			// Fatal SNMP error
+			fmt.Println("Fatal SNMP error, results are not available")
+			for _, descr := range snmpErr.Oids {
+				fmt.Println("Error description:", descr.ErrorDescription)
+			}
+		} else {
+			// Partial error - results are available!
+			fmt.Printf("Partial error, %d OIDs failed:", len(snmpErr.Oids))
+			for _, oidErr := range snmpErr.Oids {
+				fmt.Printf("  | %s", oidErr.ErrorDescription)
+			}
+		}
+
+		fmt.Println("")
+	} else {
+		fmt.Println("- NO Errors -")
+	}
+
+	fmt.Println("--- Print result ---")
+	for _, wl := range sdata {
+		fmt.Println(PowerSNMP.Convert_OID_IntArrayToString_RAW(wl.RSnmpOID), "=", PowerSNMP.Convert_Variable_To_String(wl.RSnmpVar), ":", PowerSNMP.Convert_ClassTag_to_String(wl.RSnmpVar))
+	}
+```
+
+Результат:
+```
+=== MULTI GET ===
+--- Check errors ---
+Partial error, 2 OIDs failed:  | 1.3.6.1.2.1.1.99.0 (status=128): NoSuchObject  | 1.3.6.1.2.1.1.100.0 (status=128): NoSuchObject
+--- Print result ---
+1.3.6.1.2.1.1.6.0 = Test 6.0 : Universal OCTET STRING
+1.3.6.1.2.1.1.5.0 = powercsw01.powerc : Universal OCTET STRING
+=== MULTI SET ===
+--- Check errors ---
+Fatal SNMP error, results are not available
+Error description: 1.3.6.1.2.1.1.99.0 (status=11): CannotCreateVariable
+
+--- Print result ---
+```
+
+#### Ключевое отличие:
+
+При операции **Get**:
+
+- **gosnmp** возвращает все VarBinds и пользователь должен самостоятельно проверить из на значения noSuchObject,noSuchInstance,endOfMibView
+
+- **PowerSNMPv3** возвращает не фатальную ошибку, которая содержит информацию о том, какие именно OID'ы содержат значения noSuchObject,noSuchInstance,endOfMibView
+  и результат без этих OID'ов
+
+При операции **Set**:
+
+- **gosnmp** Возвращает в результате все VarBinds которые была попытка записать
+  Пользователь может некорректно интерпретировать результат, так как в нем содержаться все новые значения.
+  Явной ошибки при этом нет.
+  Для того чтоб понять успешна операция или нет, пользователь должен проверить значения: resultSet.Error,resultSet.ErrorIndex
+
+- **PowerSNMPv3** Возвращает фатальную ошибку, содержащую OID, значение которого не удалось записать, и причину неудачи
+  и пустой результат. Несмотря на то что часть OID возможно можно было бы записать, но SET атомарная операция, и в случае неудачи с каким то одним OID, отменяется вся операция.
+
+---
+
+### Обработка ошибки несоответствия уровня безопасности
+
+PowerSNMPv3 обеспечивает RFC 3414-совместимую обработку ошибки не соответствия уровня безопасности без бесполезных повторов.
+
+#### Метод тестирования
+
+Поведение библиотек проверялось путем простого SNMP Walk опроса агента, с заведомо отличной конфигурацией уровня безопасности SNMP.  
+Сценарий тестирования: Клиент настроен только с аутентификацией (authNoPriv or authPriv), на агенте настроен тот же USM пользователь, но уровень безопасности без аутентификации и шифрования. Что встречается в реальной жизни.
+
+Все библиотеки тестировались с одинаковыми настройками (PowerSNMPv3, SNMP4J, gosnmp), трафик был захвачен в PCAP файлы для дальнейшего анализа.
+
+#### Суть проблемы
+
+Несоответствие уровня безопасности происходит тогда, когда клиент настроен с правильным SUM пользователем но например только с аутентификацией, а агент имеет того же USM пользователя но настроен например на работу без аутентификации и шифрования.  
+В соответствии с RFC 3414 §3.2, агент должен ответить сообщением REPORT, содержащим значение `usmStatsUnsupportedSecLevels` (OID 1.3.6.1.6.3.15.1.1.1.0). Critically, **REPORT отправляется не зашифрованным и без аутентификации**.
+
+#### Как PowerSNMPv3 обрабатываэт такую ситуацию
+
+##### Фаза Discovery
+```
+Client → Agent: GetRequest (EngineID discovery, noAuthNoPriv)
+Agent → Client: Report (usmStatsUnknownEngineIDs)
+  Returns: EngineID, Boots, Time
+```
+
+##### Фаза запроса (Security Level Mismatch)
+```
+Client → Agent: GetRequest/GetBulk
+  Flags: 0x05 (Auth, Reportable) или 0x07 (Auth, Priv, Reportable)
+  Auth Params: HMAC digest присутствует
+  Priv Params: AES/DES IV (если уровень безопасности authPriv)
+
+Agent → Client: Report
+  Flags: 0x00 (None) ← Нет аутентификации
+  Report OID: 1.3.6.1.6.3.15.1.1.1.0 (usmStatsUnsupportedSecLevels)
+  Counter: Увеличивается с каждой идентичной ошибкой
+
+Реакция PowerSNMPv3:
+  ✓ Прием REPORT (обработка флагов в сообщении)
+  ✓ Проверка OID
+  ✓ Возврат ошибки: "unsupported security levels"
+  ✓ НЕТ ПОВТОРОВ - ошибка и выход
+```
+
+#### RFC 3414 совместимость
+
+PowerSNMPv3 корректно реализует требования RFC 3414:
+
+- **Принимает REPORT без аутентификации** - Даже если клиент ожидает ответов с аутентификацией, REPORT с msgFlags=0x00 принимаетя, так как содержит информацию об ошибке
+- **Не делает повторных попыток** - UnsupportedSecLevels не разрешаемая ошибка без изменения настроек; повторные запросы без изменения настроек ничем не помогут
+- **Проверяет флаги в сообщении** - Проверяет аутентификацию на основании актуальных данных в сообщении, а не в настройках
+
+#### Классификация ошибок
+
+PowerSNMPv3 разделяет ошибки на **Восстанавливаемые** и **Не восстанавливаемые**:
+
+**Восстанавливаемые** (auto-retry with recovery):
+- `usmStatsNotInTimeWindows` - Не соответствие времени, повтор после синхронизации
+- `usmStatsUnknownEngineIDs` - Изменился EngineID, повтор после регенерации ключевого материала
+
+**Не восстанавливаемые**:
+- `usmStatsUnsupportedSecLevels` - Несоответствие конфигурации
+- `usmStatsUnknownUserNames` - Неизвестный USM пользователь
+- `usmStatsWrongDigests` - Неправильный ключ аутентификации
+- `usmStatsDecryptionErrors` - Неправильный ключ шифрования или протокол
+
+#### Сравнение с другими библиотеками
+
+| Библиотека      | Всего пакетов | Повторов | RFC 3414 совместима | Автоматическая обработка REPORT |
+|-----------------|---------------|----------|---------------------|----------------------------|
+| **PowerSNMPv3** | **4**         | **0**    | **✅**               | **✅ Yes**                  |
+| SNMP4J          | 6             | 1        | ✅                   | ❌ Manual                   |
+| gosnmp          | 10            | 3        | ❌                   | ⚠️ Partial                 |
+
+**Эффективность использования канала**: PowerSNMPv3 в общем случае испольщует **на 60% меньше датаграм** чем gosnmp и **на 33% меньше** чем SNMP4J при обработке случая несоответствия уровня безопасности.
+
 ---
 
 ## Примеры
@@ -757,6 +1324,8 @@ snmpinform -v 3 -u snmpuser -a sha -A authpass123 \
 # SNMPv2c INFORM
 snmpinform -v 2c -c public 192.168.1.100 42 coldStart.0
 ```
+
+#### Файлы с примерами находятся в директории **cmd**
 
 ---
 
@@ -907,4 +1476,6 @@ MIT License
 
 Доступна коммерческая версия с расширенной поддержкой.
 
-**Контакт:** oleg@powerc.ru
+**Контакт:** oleg.powerc@gmail.com
+
+
