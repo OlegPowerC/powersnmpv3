@@ -328,9 +328,9 @@ func (s *SNMPv3Session) SNMP_GetMulti(OidVar []SNMP_Packet_V2_Decoded_VarBind) (
 **Пример:**
 ```
 oids := []snmp.SNMP_Packet_V2_Decoded_VarBind{
-    {RSnmpOID: oid1},
-    {RSnmpOID: oid2},
-    {RSnmpOID: oid3},
+    {RSnmpOID: oid1, RSnmpVar: snmp.SNMPvbNullValue},
+    {RSnmpOID: oid2, RSnmpVar: snmp.SNMPvbNullValue},
+    {RSnmpOID: oid3, RSnmpVar: snmp.SNMPvbNullValue},
 }
 results, err := sess.SNMP_GetMulti(oids)
 ```

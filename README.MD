@@ -323,10 +323,10 @@ func (s *SNMPv3Session) SNMP_GetMulti(OidVar []SNMP_Packet_V2_Decoded_VarBind) (
 
 **Example:**
 ```
-oids := []snmp.SNMP_Packet_V2_Decoded_VarBind{
-    {RSnmpOID: oid1},
-    {RSnmpOID: oid2},
-    {RSnmpOID: oid3},
+oids := []PowerSNMP.SNMP_Packet_V2_Decoded_VarBind{
+    {RSnmpOID: oid1, RSnmpVar: snmp.SNMPvbNullValue},
+    {RSnmpOID: oid2, RSnmpVar: snmp.SNMPvbNullValue},
+    {RSnmpOID: oid3, RSnmpVar: snmp.SNMPvbNullValue},
 }
 results, err := sess.SNMP_GetMulti(oids)
 ```
@@ -349,7 +349,7 @@ func (s *SNMPv3Session) SNMP_Walk(oid []int) ([]SNMP_Packet_V2_Decoded_VarBind, 
 **Example:**
 ```
 // Walk ifDescr (1.3.6.1.2.1.2.2.1.2)
-oid, _ := snmp.ParseOID("1.3.6.1.2.1.2.2.1.2")
+oid, _ := PowerSNMP.ParseOID("1.3.6.1.2.1.2.2.1.2")
 interfaces, err := sess.SNMP_Walk(oid)
 for _, iface := range interfaces {
     fmt.Println(snmp.Convert_Variable_To_String(iface.RSnmpVar))
