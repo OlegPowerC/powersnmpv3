@@ -106,7 +106,7 @@ MAC адрес сохраним в виде строки
 		APstatoids = append(APstatoids, PowerSNMP.SNMP_Packet_V2_Decoded_VarBind{RSnmpOID: APStatusOIDint, RSnmpVar: PowerSNMP.SNMPvbNullValue})
 	}
 
-Строка 
+Строка: 
 
     APstatoids = append(APstatoids, PowerSNMP.SNMP_Packet_V2_Decoded_VarBind{RSnmpOID: APStatusOIDint, RSnmpVar: PowerSNMP.SNMPvbNullValue})
 
@@ -158,13 +158,15 @@ MAC адрес сохраним в виде строки
 Ниже пример получения данных с реального контроллера.  
 Захват кадров до создания файла:  
 ![Initialexcange.jpg](.github/images/Initialexcange.jpg)  
-тут мы имеем 8 кадров, первые три это процедура Discovery (разумеется только для версии 3)  
-далее заброс на получение списка точек доступа, Bulkwalk (он же getBulkRequest) и на него получен один ответ со всеми точками доступа   
+
+Тут мы имеем 8 кадров, первые три это процедура Discovery (разумеется только для версии 3)  
+далее запрос на получение списка точек доступа, Bulkwalk (он же getBulkRequest) и на него получен один ответ со всеми точками доступа   
 ![walknames.jpg](.github/images/walknames.jpg)  
 Далее посылается запрос Get для получения статуса сразу по всем точкам доступа:  
-![getmulti.jpg](.github/images/getmulti.jpg)
+![getmulti.jpg](.github/images/getmulti.jpg)  
+
 И ответ на него если нет ошибок:  
-![gettataok.jpg](.github/images/gettataok.jpg)
+![gettataok.jpg](.github/images/gettataok.jpg)  
 
 Если же опрос производится после создания файла со списком точек доступа, то обмен становится еще короче:   
 ![getnormal.jpg](.github/images/getnormal.jpg)
