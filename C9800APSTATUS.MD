@@ -154,6 +154,60 @@ MAC адрес сохраним в виде строки
 
 А полный код этого примера можно найти в директории **cmd/c9800aps**
 
+Этот сенсор так же успешно работает не только с C9800, но и со старыми Cisco WLC контроллерами.  
+Ниже пример получения данных с реального контроллера.  
+Захват кадров до создания файла:  
+![Initialexcange.jpg](.github/images/Initialexcange.jpg)  
+тут мы имеем 8 кадров, первые три это процедура Discovery (разумеется только для версии 3)  
+далее заброс на получение списка точек доступа, Bulkwalk (он же getBulkRequest) и на него получен один ответ со всеми точками доступа   
+![walknames.jpg](.github/images/walknames.jpg)  
+Далее посылается запрос Get для получения статуса сразу по всем точкам доступа:  
+![getmulti.jpg](.github/images/getmulti.jpg)
+И ответ на него если нет ошибок:  
+![gettataok.jpg](.github/images/gettataok.jpg)
 
+Если же опрос производится после создания файла со списком точек доступа, то обмен становится еще короче:   
+![getnormal.jpg](.github/images/getnormal.jpg)
 
+А теперь посмотрим что случится если одной точки у нас больше нет (рассмотрим только ответ на Get):  
+![gettatasingleerror.jpg](.github/images/gettatasingleerror.jpg)
 
+А в ответе для PRTG мы видим что у канала с именем XXX-AP27, значение равно 4, у остальных при этом 1:
+
+    <prtg>
+       <error>0</error>
+       <text></text>
+       <result>
+          <channel>XXX-AP02</channel><value>1</value><unit></unit><CustomUnit></CustomUnit><ValueLookup>C9800AP_OPSTATUS_LOOKUP</ValueLookup>
+       </result>
+       <result>
+          <channel>XXX_AP4</channel><value>1</value><unit></unit><CustomUnit></CustomUnit><ValueLookup>C9800AP_OPSTATUS_LOOKUP</ValueLookup>
+       </result>
+       <result>
+          <channel>XXX-APSC</channel><value>1</value><unit></unit><CustomUnit></CustomUnit><ValueLookup>C9800AP_OPSTATUS_LOOKUP</ValueLookup>
+       </result>
+       <result>
+          <channel>XXX-AP20</channel><value>1</value><unit></unit><CustomUnit></CustomUnit><ValueLookup>C9800AP_OPSTATUS_LOOKUP</ValueLookup>
+       </result>
+       <result>
+          <channel>XXX_AP10</channel><value>1</value><unit></unit><CustomUnit></CustomUnit><ValueLookup>C9800AP_OPSTATUS_LOOKUP</ValueLookup>
+       </result>
+       <result>
+          <channel>XXX_AP13</channel><value>1</value><unit></unit><CustomUnit></CustomUnit><ValueLookup>C9800AP_OPSTATUS_LOOKUP</ValueLookup>
+       </result>
+       <result>
+          <channel>XXX_AP03</channel><value>1</value><unit></unit><CustomUnit></CustomUnit><ValueLookup>C9800AP_OPSTATUS_LOOKUP</ValueLookup>
+       </result>
+       <result>
+          <channel>XXX-AP18</channel><value>1</value><unit></unit><CustomUnit></CustomUnit><ValueLookup>C9800AP_OPSTATUS_LOOKUP</ValueLookup>
+       </result>
+       <result>
+          <channel>XXX-AP01</channel><value>1</value><unit></unit><CustomUnit></CustomUnit><ValueLookup>C9800AP_OPSTATUS_LOOKUP</ValueLookup>
+       </result>
+       <result>
+          <channel>XXX-AP27</channel><value>4</value><unit></unit><CustomUnit></CustomUnit><ValueLookup>C9800AP_OPSTATUS_LOOKUP</ValueLookup>
+       </result>
+       <result>
+          <channel>XXX-AP11</channel><value>1</value><unit></unit><CustomUnit></CustomUnit><ValueLookup>C9800AP_OPSTATUS_LOOKUP</ValueLookup>
+       </result>
+    </prtg>
