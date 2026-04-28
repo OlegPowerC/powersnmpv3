@@ -173,7 +173,7 @@ func main() {
 		defer xmlFile.Close()
 		byteValue, _ := io.ReadAll(xmlFile)
 		umerr := xml.Unmarshal(byteValue, &devicesipstn)
-		if errfr != nil {
+		if umerr != nil {
 			ErrorInProgram(umerr)
 		}
 	}
