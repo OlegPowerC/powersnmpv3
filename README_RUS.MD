@@ -1342,7 +1342,7 @@ snmpinform -v 2c -c public 192.168.1.100 42 coldStart.0
 ### Запуск тестов
 
 ```bash
-go test -v -args \
+go test -v -tags=integration -args \
     -h <IP_УСТРОЙСТВА> \
     -u <SNMP_USER> \
     -a <AUTH_PROTO> \
@@ -1351,6 +1351,7 @@ go test -v -args \
     -X <PRIV_PASS> \
     -c <COMMUNITY>
 ```
+Для успешного прохождения интеграционного теста, **community** долно быть с правами на запись (**RW**)  
 
 **Пример:**
 ```bash

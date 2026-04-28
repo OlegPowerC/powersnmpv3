@@ -1320,7 +1320,7 @@ Full testing requires a **real SNMP device** (switch, router).
 ### Running Tests
 
 ```bash
-go test -v -args \
+go test -v -tags=integration -args \
     -h <DEVICE_IP> \
     -u <SNMP_USER> \
     -a <AUTH_PROTO> \
@@ -1329,10 +1329,11 @@ go test -v -args \
     -X <PRIV_PASS> \
     -c <COMMUNITY>
 ```
+The **community** string must be **RW** for all integration tests to pass  
 
 **Example:**
 ```bash
-go test -v -args -h 192.168.1.252 -u SNMPv3-U -a sha -A test123 -x aes -X test321 -c private123
+go test -v -tags=integration -args -h 192.168.1.252 -u SNMPv3-U -a sha -A test123 -x aes -X test321 -c private123
 ```
 
 ### What is Tested
