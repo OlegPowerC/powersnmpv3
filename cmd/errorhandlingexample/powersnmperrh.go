@@ -208,7 +208,7 @@ func OutError(err error) {
 	} else {
 		fmt.Println("- No error -")
 	}
-	fmt.Println("\r\n")
+	fmt.Println(" ")
 }
 
 func main() {
