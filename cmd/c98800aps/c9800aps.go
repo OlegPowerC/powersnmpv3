@@ -220,6 +220,13 @@ func main() {
 		if PErr.IsFatal {
 			if Cerr != nil {
 				ErrorInProgram(Cerr)
+			} else {
+				ferr := ""
+				for _, descr := range PErr.Oids {
+					ferr = descr.ErrorDescription
+				}
+				fatalperr := fmt.Errorf("Fatal SNMP error: %s", ferr)
+				ErrorInProgram(fatalperr)
 			}
 		} else {
 			for _, EmptOids := range PErr.Oids {

@@ -24,6 +24,7 @@ var (
 	SNMPauthPassword = flag.String("A", "", "SNMP auth password")
 	SNMPprivProtocol = flag.String("x", "", "SNMP priv protocol")
 	SNMPprivPassword = flag.String("X", "", "SNMP priv password")
+	MaxMsgSize       = flag.Int("msize", 1380, "MaxMessageSize")
 )
 
 func TestMain(m *testing.M) {
@@ -51,7 +52,6 @@ func TestSNMPv3Session_SNMP_Get_Set(t *testing.T) {
 	if Ssess == nil {
 		t.Fatal("Error in SNMPInit - Session is nil")
 	}
-
 	t.Log("-------- Get single oid V2 --------")
 	StrOid := "1.3.6.1.2.1.1.6.0" //Sys Location
 	Ioid, _ := ParseOID(StrOid)
@@ -124,6 +124,7 @@ func TestSNMPv3Session_SNMP_Get_Set(t *testing.T) {
 
 	t.Log("-------- Sitch to V3 --------")
 	Nhost.SNMPparameters.SNMPversion = 3
+	Nhost.SNMPparameters.MaxMsgSize = uint16(*MaxMsgSize)
 
 	Ssess, SsessError = SNMP_Init(Nhost)
 	if SsessError != nil {
@@ -289,6 +290,7 @@ func TestSNMPv3Session_SNMP_Get_Walk(t *testing.T) {
 	Nhost.SNMPparameters.PrivKey = *SNMPprivPassword
 	Nhost.SNMPparameters.Community = *SNMPcommunity
 	Nhost.SNMPparameters.TimeoutBtwRepeat = 500
+	Nhost.SNMPparameters.MaxMsgSize = uint16(*MaxMsgSize)
 	Nhost.SNMPparameters.RetryCount = 3
 	Ssess, SsessError := SNMP_Init(Nhost)
 	if SsessError != nil {
@@ -319,6 +321,8 @@ func TestSNMPv3Session_SNMP_Get_Walk(t *testing.T) {
 	}
 	t.Log("-------- End --------")
 	t.Log("-------- Bulk walk from OID 1.3.6.1.2.1.2.2.1.2 V3 --------")
+	t.Log("Wanted MaxMessageSize =", *MaxMsgSize)
+	t.Log("MaxMessageSize =", Ssess.SNMPparams.MaxMsgSize)
 	BWalkRes, verr3bw := Ssess.SNMP_BulkWalk(IoidW)
 	if verr3bw != nil {
 		t.Errorf("SNMP v3 Error in SNMP_BulkWalk: %s", verr3bw.Error())

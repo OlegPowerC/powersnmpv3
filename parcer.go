@@ -398,7 +398,11 @@ func receiverV3parser(SNMPparameters *SNMPv3Session, udppayload []byte, checkmsg
 	}
 
 	if RecivedGlobalParameters.MsgFlag[0]&(1<<msgFlag_Encrypted_Bit) != 0 {
-		//Нужно расшифровать
+		//Нужно расшифровать потому что задан режим Priv
+		if len(RecivedSecurity.PrivParams) == 0 {
+			//Но если поле Priv parameter пустое то расшифровать невозможно
+			return ReturnSNMPpacker, errors.New("security level mismatch, priv parameter not present")
+		}
 		if SNMPparameters.Debuglevel > 199 {
 			fmt.Println("Encrypted PDU")
 		}
