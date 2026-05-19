@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -67,6 +68,21 @@ func (e SNMPwrongReqID_MsgId_Errors) Error() string {
 		return "Wrong RequestID"
 	}
 	return "unknown error code"
+}
+
+// Print error when provided incorrect parameters
+func (e SNMPSetparameters_Errors) Error() string {
+	var ErrsSt []string
+	for _, ErString := range e.WrongParameters {
+		AllowedValuesSt := fmt.Sprintf("allowed values: %s", strings.Join(ErString.AllowedValues, ","))
+		errtpst := "invalid"
+		if ErString.ErrorType == SNMP_PARAMSERR_NOT_ALLOWED {
+			errtpst = "not allowed"
+		}
+		ErrsSt = append(ErrsSt, fmt.Sprintf("parameter: %s is: %s, error type: %s, %s. %s", ErString.WrongParameter, ErString.Value, errtpst, AllowedValuesSt, ErString.ExtraMessage))
+	}
+	FullErrString := strings.Join(ErrsSt, ". ")
+	return fmt.Sprintf("set parameters error: %s", FullErrString)
 }
 
 // Print partial error for man
@@ -1132,124 +1148,206 @@ func SNMPPDUErrorIntToText(code int) string {
 	return fmt.Sprintf("pdu error-status: %d", code)
 }
 
-func setAuthPrivParamsStToInt(authproto string, authkey string, privproto string, privkey string) (seclevel int, intauth int, intprivparam int, err error) {
-	AuthProtoString := strings.ToLower(strings.TrimSpace(authproto))
-	PrivProtoString := strings.ToLower(strings.TrimSpace(privproto))
-	switch AuthProtoString {
-	case "sha":
-		intauth = AUTH_PROTOCOL_SHA
-		seclevel = SECLEVEL_AUTHNOPRIV
-	case "sha224":
-		intauth = AUTH_PROTOCOL_SHA224
-		seclevel = SECLEVEL_AUTHNOPRIV
-	case "sha256":
-		intauth = AUTH_PROTOCOL_SHA256
-		seclevel = SECLEVEL_AUTHNOPRIV
-	case "sha384":
-		intauth = AUTH_PROTOCOL_SHA384
-		seclevel = SECLEVEL_AUTHNOPRIV
-	case "sha512":
-		intauth = AUTH_PROTOCOL_SHA512
-		seclevel = SECLEVEL_AUTHNOPRIV
-	case "md5":
-		intauth = AUTH_PROTOCOL_MD5
-		seclevel = SECLEVEL_AUTHNOPRIV
-	default:
-		intauth = AUTH_PROTOCOL_NONE
-		seclevel = SECLEVEL_NOAUTH_NOPRIV
-	}
-
-	if intauth != AUTH_PROTOCOL_NONE {
-		switch PrivProtoString {
-		case "aes":
-			intprivparam = PRIV_PROTOCOL_AES128
-			seclevel = SECLEVEL_AUTHPRIV
-		case "aes192":
-			intprivparam = PRIV_PROTOCOL_AES192
-			seclevel = SECLEVEL_AUTHPRIV
-		case "aes256":
-			intprivparam = PRIV_PROTOCOL_AES256
-			seclevel = SECLEVEL_AUTHPRIV
-		case "aes192a":
-			intprivparam = PRIV_PROTOCOL_AES192A
-			seclevel = SECLEVEL_AUTHPRIV
-		case "aes256a":
-			intprivparam = PRIV_PROTOCOL_AES256A
-			seclevel = SECLEVEL_AUTHPRIV
-		case "des":
-			intprivparam = PRIV_PROTOCOL_DES
-			seclevel = SECLEVEL_AUTHPRIV
-		default:
-			intprivparam = PRIV_PROTOCOL_NONE
-			seclevel = SECLEVEL_AUTHNOPRIV
-		}
-	}
-
-	if intauth != AUTH_PROTOCOL_NONE {
-		if len(authkey) == 0 {
-			return 0, 0, 0, errors.New("auth key must be greater than 0 symbols")
-		}
-	}
-	if intprivparam != PRIV_PROTOCOL_NONE {
-		if len(privkey) == 0 {
-			return 0, 0, 0, errors.New("priv key must be greater than 0 symbols")
-		}
-	}
-
-	return seclevel, intauth, intprivparam, nil
-}
-
+// CheckUserParams validates SNMP device configuration
+//
+// This function performs comprehensive pre-flight validation of a NetworkDevice, checking:
+//   - IP address: must be a valid IPv4 or IPv6 address (parsed via net.ParseIP)
+//   - Port: must be in the range [161, 65535]
+//   - SNMP version: only versions 2 and 3 are supported
+//   - Version-specific credentials:
+//   - SNMP v2: requires non-empty Community string
+//   - SNMP v3: requires Username + valid auth/priv protocols and keys
+//
+// # Error Handling Strategy
+//
+// Critical errors (invalid IP, port, or SNMP version) return immediately with a simple error.
+// Parameter validation errors (community, username, auth/priv settings) are accumulated in a
+// SNMPSetparameters_Errors object and returned together — allowing users to fix all issues
+// in one iteration rather than one at a time.
+//
+// # Returns
+//
+//   - nil: if all validations pass
+//   - error: simple error for critical failures, or SNMPSetparameters_Errors for parameter issues
+//
+// Use errors.As(err, &SNMPSetparameters_Errors) to access structured validation errors.
+//
+// # Example
+//
+//	dev := NetworkDevice{
+//	    IPaddress: "192.168.1.1",
+//	    Port:      161,
+//	    SNMPparameters: SNMPUserParameters{
+//	        SNMPversion:  3,
+//	        Username:     "snmpuser",
+//	        AuthProtocol: "sha256",
+//	        AuthKey:      "auth12345",
+//	        PrivProtocol: "aes",
+//	        PrivKey:      "priv12345",
+//	    },
+//	}
+//	if err := CheckUserParams(dev); err != nil {
+//	    var vErr SNMPSetparameters_Errors
+//	    if errors.As(err, &vErr) {
+//	        for _, e := range vErr.WrongParameters {
+//	            log.Printf("%s: %s", e.WrongParameter, e.ExtraMessage)
+//	        }
+//	    } else {
+//	        log.Printf("Critical error: %v", err)
+//	    }
+//	    return err
+//	}
+//
+// # See Also
+//
+//   - CheckSNMPv3StringParams: validates SNMPv3 auth/priv parameters
+//   - SNMPSetparameters_Errors: structured error type for accumulated validation failures
 func CheckUserParams(ndev NetworkDevice) error {
+	var reterr SNMPSetparameters_Errors
+
 	ipa := net.ParseIP(ndev.IPaddress)
-	authprotoexist := false
-	privprotoexist := false
+
 	if ipa == nil {
-		return errors.New("wrong ip address")
+		return fmt.Errorf("wrong ip address, error: %v", ipa)
 	}
 	if ndev.Port < 161 || ndev.Port > 65535 {
 		return errors.New("wrong port number, must be from 161 to 65535")
 	}
 
 	if ndev.SNMPparameters.SNMPversion != 2 && ndev.SNMPparameters.SNMPversion != 3 {
-		return fmt.Errorf(`version error: %d`, ndev.SNMPparameters.SNMPversion)
+		reterr.WrongParameters = append(reterr.WrongParameters, SNMPsetparameters_singleErrors{WrongParameter: "version", Value: strconv.Itoa(ndev.SNMPparameters.SNMPversion),
+			AllowedValues: []string{"2", "3"}, ExtraMessage: fmt.Sprintf(`version error: %d`, ndev.SNMPparameters.SNMPversion)})
+		return reterr
 	}
 
 	if ndev.SNMPparameters.SNMPversion == 2 {
 		if len(ndev.SNMPparameters.Community) == 0 {
-			return errors.New("for version 2, snmp community is required")
+			reterr.WrongParameters = append(reterr.WrongParameters, SNMPsetparameters_singleErrors{WrongParameter: "community", Value: "",
+				AllowedValues: []string{"*+"}, ExtraMessage: "for version 2, snmp community is required"})
+			return reterr
 		}
+		//Для версии 2 (2c) кроме строки community больше ничего не нужно - можно выходить
 		return nil
 	}
 
 	if len(ndev.SNMPparameters.Username) == 0 {
-		return errors.New("for version 3, USM user is required")
+		reterr.WrongParameters = append(reterr.WrongParameters, SNMPsetparameters_singleErrors{WrongParameter: "username", Value: "",
+			AllowedValues: []string{"*+"}, ExtraMessage: "for version 3, USM user is required"})
 	}
 
-	if len(ndev.SNMPparameters.PrivProtocol) > 0 && len(ndev.SNMPparameters.AuthProtocol) == 0 {
-		return fmt.Errorf("priv protocol accepted only with auth protocol")
-	}
-
-	if len(ndev.SNMPparameters.AuthProtocol) >= 3 {
-		aupch := strings.ToLower(strings.TrimSpace(ndev.SNMPparameters.AuthProtocol))
-		if aupch != "md5" && aupch != "sha" && aupch != "sha224" && aupch != "sha256" && aupch != "sha384" && aupch != "sha512" {
-			return fmt.Errorf("unsupported auth protocol: %s", ndev.SNMPparameters.AuthProtocol)
+	_, _, _, snmpv3err := CheckSNMPv3StringParams(ndev.SNMPparameters.AuthProtocol, ndev.SNMPparameters.AuthKey, ndev.SNMPparameters.PrivProtocol, ndev.SNMPparameters.PrivKey)
+	if snmpv3err != nil {
+		var Serr SNMPSetparameters_Errors
+		if errors.As(snmpv3err, &Serr) {
+			if len(Serr.WrongParameters) > 0 {
+				reterr.WrongParameters = append(reterr.WrongParameters, Serr.WrongParameters...)
+			}
+		} else {
+			return fmt.Errorf("Checking error: %v", snmpv3err.Error())
 		}
-		authprotoexist = true
-	}
-	if len(ndev.SNMPparameters.PrivProtocol) >= 3 {
-		privph := strings.ToLower(strings.TrimSpace(ndev.SNMPparameters.PrivProtocol))
-		if privph != "des" && privph != "aes" && privph != "aes192" && privph != "aes256" && privph != "aes192a" && privph != "aes256a" {
-			return fmt.Errorf("unsupported priv protocol: %s", ndev.SNMPparameters.PrivProtocol)
-		}
-		privprotoexist = true
-	}
-	if len(ndev.SNMPparameters.AuthKey) < 8 && authprotoexist {
-		return fmt.Errorf("auth key too short")
 	}
 
-	if len(ndev.SNMPparameters.PrivKey) < 8 && privprotoexist {
-		return fmt.Errorf("priv key too short")
+	if len(reterr.WrongParameters) > 0 {
+		return reterr
 	}
-
 	return nil
+}
+
+// CheckSNMPv3StringParams validates SNMPv3 string parameters and returns
+// numeric constants.
+//
+// # Parameters
+//
+//   - authproto: authentication protocol.
+//     Supported: "","none", "md5", "sha", "sha224", "sha256", "sha384", "sha512".
+//
+//   - authkey: authentication passphrase. Required if authproto is set and != "none".
+//     Minimum length: SNMP_AUTH_PRIV_KEY_MINLEN characters.
+//
+//   - privproto: privacy protocol.
+//     Supported: "none", "des", "aes", "aes192", "aes256", "aes192a", "aes256a".
+//
+//   - privkey: privacy passphrase. Required if privproto is set and != "none".
+//     Minimum length: SNMP_AUTH_PRIV_KEY_MINLEN characters.
+//
+// # Returns
+//
+//   - seclevelInt: SNMPv3 security level:
+//
+//   - 0 = NoAuthNoPriv, 1 = AuthNoPriv, 2 = AuthPriv
+//
+//   - authprotoInt: auth protocol constant
+//
+//   - privprotoInt: priv protocol constant
+//
+//   - err: validation error of type SNMPSetparameters_Errors, or nil on success.
+//     Returned int values are only valid if err == nil.
+//
+// # Error Handling
+//
+//   - All validation errors are accumulated and returned together.
+//   - Each error includes: parameter name, actual value, allowed values,
+//     error type (invalid/not allowed), and a human-readable message.
+//
+// # Constraints
+//
+//   - privproto requires a valid non-"none" authproto.
+//   - Empty strings for authproto/privproto are treated as "none".
+func CheckSNMPv3StringParams(authproto string, authkey string, privproto string, privkey string) (seclevelInt int, authprotoInt int, privprotoInt int, err error) {
+	var reterr SNMPSetparameters_Errors
+	AuthProtoString := strings.ToLower(strings.TrimSpace(authproto))
+	PrivProtoString := strings.ToLower(strings.TrimSpace(privproto))
+	//Проверяем указан ли хоть какой то протокол auth
+	AuthNone := true
+	PrivNone := true
+	seclevel := SECLEVEL_NOAUTH_NOPRIV
+	authint := AUTH_PROTOCOL_NONE
+	privint := PRIV_PROTOCOL_NONE
+
+	if len(AuthProtoString) > 0 {
+		if AuthP, Aok := authProtocols[AuthProtoString]; Aok {
+			AuthNone = AuthP.non
+			if !AuthNone {
+				if len(authkey) < SNMP_AUTH_PRIV_KEY_MINLEN {
+					reterr.WrongParameters = append(reterr.WrongParameters, SNMPsetparameters_singleErrors{WrongParameter: "auth key", Value: authkey,
+						AllowedValues: []string{"*****+"}, ErrorType: SNMP_PARAMSERR_INVALID, ExtraMessage: fmt.Sprintf("auth key must be equal or greater than %d symbols", SNMP_AUTH_PRIV_KEY_MINLEN)})
+				} else {
+					authint = AuthP.intVar
+					seclevel = SECLEVEL_AUTHNOPRIV
+				}
+			}
+		} else {
+			reterr.WrongParameters = append(reterr.WrongParameters, SNMPsetparameters_singleErrors{WrongParameter: "auth protocol", Value: authproto,
+				AllowedValues: allowedAuthProtoSt, ErrorType: SNMP_PARAMSERR_INVALID, ExtraMessage: fmt.Sprintf("unsupported auth protocol: %s", authproto)})
+		}
+	}
+	if len(PrivProtoString) > 0 {
+		if PrivP, Pok := privhProtocols[PrivProtoString]; Pok {
+			PrivNone = PrivP.non
+			if !PrivNone {
+				kinv := false
+				if len(privkey) < SNMP_AUTH_PRIV_KEY_MINLEN {
+					kinv = true
+					reterr.WrongParameters = append(reterr.WrongParameters, SNMPsetparameters_singleErrors{WrongParameter: "priv key", Value: privkey,
+						AllowedValues: []string{"*****+"}, ErrorType: SNMP_PARAMSERR_INVALID, ExtraMessage: fmt.Sprintf("priv key must be equal or greater than %d symbols", SNMP_AUTH_PRIV_KEY_MINLEN)})
+				}
+				if AuthNone {
+					reterr.WrongParameters = append(reterr.WrongParameters, SNMPsetparameters_singleErrors{WrongParameter: "priv protocol", Value: privproto,
+						AllowedValues: allowedPrivProtoSt, ErrorType: SNMP_PARAMSERR_NOT_ALLOWED, ExtraMessage: "priv protocol accepted only with auth protocol"})
+				} else {
+					if !kinv {
+						privint = PrivP.intVar
+						seclevel = SECLEVEL_AUTHPRIV
+					}
+				}
+			}
+		} else {
+			reterr.WrongParameters = append(reterr.WrongParameters, SNMPsetparameters_singleErrors{WrongParameter: "priv protocol", Value: privproto,
+				AllowedValues: allowedPrivProtoSt, ErrorType: SNMP_PARAMSERR_INVALID, ExtraMessage: fmt.Sprintf("unsupported priv protocol: %s", privproto)})
+		}
+	}
+	if len(reterr.WrongParameters) > 0 {
+		return 0, 0, 0, reterr
+	}
+	return seclevel, authint, privint, nil
 }

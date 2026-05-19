@@ -68,6 +68,11 @@ const (
 
 const (
 	// SNMPv3 Security Models
+	SNMP_AUTH_PRIV_KEY_MINLEN = 5
+)
+
+const (
+	// SNMPv3 Security Models
 	msgSecurityModel_USM = 3
 )
 
@@ -170,4 +175,9 @@ const (
 	sNMP_ErrUnexpectedInternalSNMPDriverError = 0x29
 	sNMP_ErrNoHandlerForPDU                   = 0x2A
 	sNMP_ErrErrorAddingUserCredentials        = 0x2B
+)
+
+const (
+	SNMP_PARAMSERR_NOT_ALLOWED = 1
+	SNMP_PARAMSERR_INVALID     = 2
 )

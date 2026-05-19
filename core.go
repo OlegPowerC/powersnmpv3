@@ -261,7 +261,7 @@ func SNMPv3_Discovery(Ndev NetworkDevice) (SNMPsession *SNMPv3Session, err error
 	}()
 
 	Session.conn = conn
-	seclevel, aproto, pproto, ReturnError := setAuthPrivParamsStToInt(Ndev.SNMPparameters.AuthProtocol, Ndev.SNMPparameters.AuthKey, Ndev.SNMPparameters.PrivProtocol, Ndev.SNMPparameters.PrivKey)
+	seclevel, aproto, pproto, ReturnError := CheckSNMPv3StringParams(Ndev.SNMPparameters.AuthProtocol, Ndev.SNMPparameters.AuthKey, Ndev.SNMPparameters.PrivProtocol, Ndev.SNMPparameters.PrivKey)
 	if ReturnError != nil {
 		return Session, ReturnError
 	}

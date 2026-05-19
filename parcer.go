@@ -68,7 +68,7 @@ func ParseTrapWithCredentials(SenderIp string, SenderPort int, packet []byte, Us
 	var SNMPparameters SNMPv3Session
 	var ReturnSNMPpacket SNMP_Packet_V2_decoded_PDU
 
-	seclevel, aproto, pproto, aperr := setAuthPrivParamsStToInt(UserData.AuthProtocol, UserData.AuthKey, UserData.PrivProtocol, UserData.PrivKey)
+	seclevel, aproto, pproto, aperr := CheckSNMPv3StringParams(UserData.AuthProtocol, UserData.AuthKey, UserData.PrivProtocol, UserData.PrivKey)
 	if aperr != nil {
 		return 0, 0, ReturnSNMPpacket, aperr
 	}
@@ -399,10 +399,9 @@ func receiverV3parser(SNMPparameters *SNMPv3Session, udppayload []byte, checkmsg
 
 	if RecivedGlobalParameters.MsgFlag[0]&(1<<msgFlag_Encrypted_Bit) != 0 {
 		//Нужно расшифровать потому что задан режим Priv
-		if len(RecivedSecurity.PrivParams) == 0 {
-			//Но если поле Priv parameter пустое то расшифровать невозможно
-			return ReturnSNMPpacker, errors.New("security level mismatch, priv parameter not present")
-		}
+		//Флаг в принятой датаграмме, поэтому если в параметрах пользователя задан режим AuthPriv
+		//А принятые данные не зашифрованы, они все равно корректно разберутся
+
 		if SNMPparameters.Debuglevel > 199 {
 			fmt.Println("Encrypted PDU")
 		}

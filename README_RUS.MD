@@ -251,6 +251,93 @@ type SNMPTrapParameters struct {
 
 ## Публичные функции
 
+### Валидация параметров
+
+#### CheckUserParams
+
+Проверяет параметры агента SNMP.  
+Вызывается из SNMP_Init, но может использоваться отдельно.
+
+```
+func CheckUserParams(ndev NetworkDevice) error 
+```
+**Параметры:**
+- `Ndev` - конфигурация SNMP агента
+
+**Возвращаемые значения:**
+- `error` - ошибка или nil (может быть структурированной или нет)
+
+**Пример:**
+```
+	dev := NetworkDevice{
+	    IPaddress: "192.168.1.1",
+	    Port:      161,
+	    SNMPparameters: SNMPUserParameters{
+	        SNMPversion:  3,
+	        Username:     "snmpuser",
+	        AuthProtocol: "sha256",
+	        AuthKey:      "auth12345",
+	        PrivProtocol: "aes",
+	        PrivKey:      "priv12345",
+	    },
+	}
+	if err := CheckUserParams(dev); err != nil {
+	    var vErr SNMPSetparameters_Errors
+	    if errors.As(err, &vErr) {
+	        for _, e := range vErr.WrongParameters {
+	            log.Printf("%s: %s", e.WrongParameter, e.ExtraMessage)
+	        }
+	    } else {
+	        log.Printf("Critical error: %v", err)
+	    }
+	    return err
+	}
+```
+
+#### CheckSNMPv3StringParams
+
+Проверяет строковые параметры SNMPv3 и возвращает нумерованные константы.
+Может быть использована, например при создании карты пользователь/параметры NMPv3 в приемнике трапов
+
+```
+func CheckSNMPv3StringParams(authproto string, authkey string, privproto string, privkey string) (seclevelInt int, authprotoInt int, privprotoInt int, err error)
+```
+**Параметры:**
+- `authproto`: протокол аутентификации. поддерживаются: "","**none**", "**md5**", "**sha**", "**sha224**", "**sha256**", "**sha384**", "**sha512**".
+- `authkey`: пароль аутентификации. Протокол аутентификации должен быть не "**none**". Минимальная длинна: **SNMP_AUTH_PRIV_KEY_MINLEN** символов.
+- `privproto`: протокол шифрования. поддерживаются: "**none**", "**des**", "**aes**", "**aes192**", "**aes256**", "**aes192a**", "**aes256a**".
+- `privkey`: пароль шифрования. Протокол шифрования должен быть не "**none**". Минимальная длинна: **SNMP_AUTH_PRIV_KEY_MINLEN** символов.
+- Empty strings for authproto/privproto are treated as "**none**".
+
+**Возвращаемые значения:**
+- `seclevelInt`: SNMPv3 уровень безопасности: 0 = NoAuthNoPriv, 1 = AuthNoPriv, 2 = AuthPriv
+- `authprotoInt`: константа протокола аутентификации
+- `privprotoInt`: константа протокола шифрования
+- `err`: ошибка типа **SNMPSetparameters_Errors**, либо **nil**. Возвращаемые значения верны, если err == nil.
+
+**Пример:**
+
+```
+authLevel, authProto, privProto, err := CheckSNMPv3StringParams(
+    "sha",
+    "auth12345",
+    "aes",
+    "priv12345678",
+)
+if err != nil {
+    var vErr SNMPSetparameters_Errors
+    if errors.As(err, &vErr) {
+        for _, e := range vErr.WrongParameters {
+            log.Printf("%s: %s", e.WrongParameter, e.ExtraMessage)
+        }
+    } else {
+        log.Printf("Critical error: %v", err)
+    }
+    return err
+}
+```
+
+
 ### Инициализация и закрытие сессии
 
 #### SNMP_Init

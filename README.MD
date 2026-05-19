@@ -247,6 +247,93 @@ type SNMPTrapParameters struct {
 
 ## Public Functions
 
+### Parameters validation
+
+#### CheckUserParams
+
+Validates SNMP device configuration parameters.  
+Called by SNMP_Init, but can also be called independently.
+
+```
+func CheckUserParams(ndev NetworkDevice) error 
+```
+**Parameters:**
+- `Ndev` - device configuration
+
+**Returns:**
+- `error` -  error or nil (can be structured error or simple error)
+
+**Example:**
+```
+	dev := NetworkDevice{
+	    IPaddress: "192.168.1.1",
+	    Port:      161,
+	    SNMPparameters: SNMPUserParameters{
+	        SNMPversion:  3,
+	        Username:     "snmpuser",
+	        AuthProtocol: "sha256",
+	        AuthKey:      "auth12345",
+	        PrivProtocol: "aes",
+	        PrivKey:      "priv12345",
+	    },
+	}
+	if err := CheckUserParams(dev); err != nil {
+	    var vErr SNMPSetparameters_Errors
+	    if errors.As(err, &vErr) {
+	        for _, e := range vErr.WrongParameters {
+	            log.Printf("%s: %s", e.WrongParameter, e.ExtraMessage)
+	        }
+	    } else {
+	        log.Printf("Critical error: %v", err)
+	    }
+	    return err
+	}
+```
+
+#### CheckSNMPv3StringParams
+
+Validates SNMPv3 string parameters and returns numeric constants.  
+Useful for building a map of user parameters in SNMP trap receivers
+
+```
+func CheckSNMPv3StringParams(authproto string, authkey string, privproto string, privkey string) (seclevelInt int, authprotoInt int, privprotoInt int, err error)
+```
+**Parameters:**
+- `authproto`: authentication protocol. Supported: "","**none**", "**md5**", "**sha**", "**sha224**", "**sha256**", "**sha384**", "**sha512**".
+- `authkey`: authentication passphrase. Required if authproto is set and != "**none**". Minimum length: **SNMP_AUTH_PRIV_KEY_MINLEN** characters.
+- `privproto`: privacy protocol. Supported: "**none**", "**des**", "**aes**", "**aes192**", "**aes256**", "**aes192a**", "**aes256a**".
+- `privkey`: privacy passphrase. Required if privproto is set and != "**none**". Minimum length: **SNMP_AUTH_PRIV_KEY_MINLEN** characters.
+- Empty strings for authproto/privproto are treated as "**none**".
+
+**Returns:**
+- `seclevelInt`: SNMPv3 security level: 0 = NoAuthNoPriv, 1 = AuthNoPriv, 2 = AuthPriv
+- `authprotoInt`: auth protocol constant
+- `privprotoInt`: priv protocol constant
+- `err`: validation error of type **SNMPSetparameters_Errors**, or **nil** on success. Returned int values are only valid if err == nil.
+
+**Example:**
+
+```
+authLevel, authProto, privProto, err := CheckSNMPv3StringParams(
+    "sha",
+    "auth12345",
+    "aes",
+    "priv12345678",
+)
+if err != nil {
+    var vErr SNMPSetparameters_Errors
+    if errors.As(err, &vErr) {
+        for _, e := range vErr.WrongParameters {
+            log.Printf("%s: %s", e.WrongParameter, e.ExtraMessage)
+        }
+    } else {
+        log.Printf("Critical error: %v", err)
+    }
+    return err
+}
+```
+
+
 ### Session Initialization and Closing
 
 #### SNMP_Init

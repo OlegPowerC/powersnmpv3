@@ -22,6 +22,27 @@ var OID_UnknownContext = []int{1, 3, 6, 1, 6, 3, 12, 1, 5, 0}
 var OID_UnsupportedSecLevels = []int{1, 3, 6, 1, 6, 3, 15, 1, 1, 1, 0}
 var OID_UnknownEngineId = []int{1, 3, 6, 1, 6, 3, 15, 1, 1, 4, 0}
 
+var allowedAuthProtoSt []string = []string{"sha", "sha224", "sha256", "sha384", "sha512", "md5", "none"}
+var allowedPrivProtoSt []string = []string{"aes", "aes192", "aes256", "aes192a", "aes256a", "des", "none"}
+
+var authProtocols map[string]authPrivProtocolDescr = map[string]authPrivProtocolDescr{
+	"none":   authPrivProtocolDescr{non: true, intVar: AUTH_PROTOCOL_NONE},
+	"sha":    authPrivProtocolDescr{non: false, intVar: AUTH_PROTOCOL_SHA},
+	"sha224": authPrivProtocolDescr{non: false, intVar: AUTH_PROTOCOL_SHA224},
+	"sha256": authPrivProtocolDescr{non: false, intVar: AUTH_PROTOCOL_SHA256},
+	"sha384": authPrivProtocolDescr{non: false, intVar: AUTH_PROTOCOL_SHA384},
+	"sha512": authPrivProtocolDescr{non: false, intVar: AUTH_PROTOCOL_SHA512},
+	"md5":    authPrivProtocolDescr{non: false, intVar: AUTH_PROTOCOL_MD5}}
+
+var privhProtocols map[string]authPrivProtocolDescr = map[string]authPrivProtocolDescr{
+	"none":    authPrivProtocolDescr{non: true, intVar: PRIV_PROTOCOL_NONE},
+	"aes":     authPrivProtocolDescr{non: false, intVar: PRIV_PROTOCOL_AES128},
+	"aes192":  authPrivProtocolDescr{non: false, intVar: PRIV_PROTOCOL_AES192},
+	"aes192a": authPrivProtocolDescr{non: false, intVar: PRIV_PROTOCOL_AES192A},
+	"aes256":  authPrivProtocolDescr{non: false, intVar: PRIV_PROTOCOL_AES256},
+	"aes256a": authPrivProtocolDescr{non: false, intVar: PRIV_PROTOCOL_AES256A},
+	"des":     authPrivProtocolDescr{non: false, intVar: PRIV_PROTOCOL_DES}}
+
 var SNMPErrorNames = map[int]string{
 	sNMP_ErrNoError:                           "NoError",
 	sNMP_ErrResponseTooLarge:                  "ResponseTooLarge",
@@ -72,6 +93,12 @@ var SNMPErrorNames = map[int]string{
 	tagandclassERR_noSuchObject:   "NoSuchObject",
 	tagandclassERR_noSuchInstance: "NoSuchInstance",
 	tagandclassERR_EndOfMib:       "EndOfMib",
+}
+
+type authPrivProtocolDescr struct {
+	non     bool
+	intVar  int
+	needKey bool
 }
 
 type SNMPv3_DecodePacket struct {
@@ -135,6 +162,17 @@ type SNMPud_OidError struct {
 type SNMPud_Errors struct {
 	IsFatal bool
 	Oids    []SNMPud_OidError
+}
+
+type SNMPsetparameters_singleErrors struct {
+	WrongParameter string
+	Value          string
+	ErrorType      uint8
+	AllowedValues  []string
+	ExtraMessage   string
+}
+type SNMPSetparameters_Errors struct {
+	WrongParameters []SNMPsetparameters_singleErrors
 }
 
 type PowerSNMPv3_Errors_FailedOids_Error struct {
