@@ -374,7 +374,7 @@ func receiverV3parser(SNMPparameters *SNMPv3Session, udppayload []byte, checkmsg
 		atomic.StoreInt32(&SNMPparameters.SNMPparams.RTime, RecivedSecurity.Time)
 	}
 
-	if RecivedGlobalParameters.MsgFlag[0]&(1<<msgFlag_Authenticated_Bit) != 0 {
+	if len(RecivedGlobalParameters.MsgFlag) > 0 && (RecivedGlobalParameters.MsgFlag[0]&(1<<msgFlag_Authenticated_Bit) != 0) {
 		if !checkmsg_req_id {
 			//Берем EngineID из принятых данных а так же Boots и Time
 			SNMPparameters.SNMPparams.EngineID = RecivedSecurity.AuthEng
@@ -397,7 +397,7 @@ func receiverV3parser(SNMPparameters *SNMPv3Session, udppayload []byte, checkmsg
 		}
 	}
 
-	if RecivedGlobalParameters.MsgFlag[0]&(1<<msgFlag_Encrypted_Bit) != 0 {
+	if len(RecivedGlobalParameters.MsgFlag) > 0 && (RecivedGlobalParameters.MsgFlag[0]&(1<<msgFlag_Encrypted_Bit) != 0) {
 		//Нужно расшифровать потому что задан режим Priv
 		//Флаг в принятой датаграмме, поэтому если в параметрах пользователя задан режим AuthPriv
 		//А принятые данные не зашифрованы, они все равно корректно разберутся
