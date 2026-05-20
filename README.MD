@@ -7,6 +7,7 @@
 [![GitHub stars](https://img.shields.io/github/stars/OlegPowerC/powersnmpv3?style=social)](https://github.com/OlegPowerC/powersnmpv3/stargazers)
 [![DEV.to Article](https://img.shields.io/badge/DEV.to-Article-blue)](https://dev.to/olegpowerc/powersnmpv3-a-new-pure-go-snmp-library-with-better-error-handling-10d1)
 [![Examples](https://img.shields.io/badge/examples-📂-blue)](./cmd)
+[![IPv6](https://img.shields.io/badge/IPv6-Supported-brightgreen)](#)
 [![CodeQL](https://github.com/OlegPowerC/powersnmpv3/workflows/CodeQL/badge.svg)](https://github.com/OlegPowerC/powersnmpv3/security/code-scanning)
 📖 **Quick Links:**
 - [Installation](#installation)
