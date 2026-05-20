@@ -38,7 +38,7 @@
 - Прием TRAP/INFORM с автоматическим ACK
 - Минимальные зависимости: только `github.com/OlegPowerC/asn1modsnmp`
 - Обработка частичных ошибок (partial errors)
-
+- Поддержка как IPv4 так и Pv6
 ---
 
 ## Установка
@@ -1428,6 +1428,9 @@ snmpinform -v 2c -c public 192.168.1.100 42 coldStart.0
 
 ### Запуск тестов
 
+Укажите tag **checkparams** для проверки валидации параметров.  
+Укажите tag **integration** для выполнения тестов на реальном устройстве.
+
 ```bash
 go test -v -tags=integration -args \
     -h <IP_УСТРОЙСТВА> \
@@ -1438,11 +1441,16 @@ go test -v -tags=integration -args \
     -X <PRIV_PASS> \
     -c <COMMUNITY>
 ```
-Для успешного прохождения интеграционного теста, **community** долно быть с правами на запись (**RW**)  
+Для успешного прохождения интеграционного теста, **community** долно быть с правами на запись (**RW**) 
+И так же, пользователь SNMPv3 тоже должен иметь права на запись.
 
 **Пример:**
 ```bash
-go test -v -args -h 192.168.1.252 -u SNMPv3-U -a sha -A test123 -x aes -X test321 -c private123
+go test -v -tags=integration -args -h 192.168.1.252 -u snmpuser -a sha -A test123 -x aes -X test321 -c private123
+```
+Пример с IPv6:  
+```bash
+go test -v -tags=integration -args -h  2001:db8:1::120 -u snmpuser -a sha -A test123 -x aes -X test321 -c private123
 ```
 
 ### Что тестируется
@@ -1459,17 +1467,22 @@ go test -v -args -h 192.168.1.252 -u SNMPv3-U -a sha -A test123 -x aes -X test32
    - `TestConvert_snmpint_to_uint32` - SNMP uint32
    - `TestConvert_Covert_OID_StringToIntArray` - строка в OID
    - `Test_PKCS5Padding` - PKCS5 padding/unpadding
+   - `TestCheckUserParams` - валидация SNMP параметров
+   - `TestSetAuthPrivParamsStToInt` - валидация/конвертация snmp auth/priv параметров
+   - `TestCheckParamsIPandPortSNMP` - валидация IP адреса и порта
+   - `TestBasicCheckParamsVersionSNMP` - валидация проверки версии SNMP
+   - `TestBasicCheckParamsVersion2SNMP` - валидация SNMP v2 параметров
 
 2. **Интеграционные тесты** (требуют устройства):
    - `TestSNMPv3Session_SNMP_Get_Set_Walk`:
-     - SNMPv2c GET (чтение sysLocation)
-     - SNMPv2c SET (запись sysLocation)
-     - SNMPv3 инициализация с Engine Discovery
-     - SNMPv3 GET (чтение sysLocation)
-     - SNMPv3 SET (запись sysLocation)
-     - Верификация V2→V3 (проверка что SET v2 виден из v3)
-     - SNMPv3 Walk (ifDescr)
-     - SNMPv3 BulkWalk (ifDescr)
+   - SNMPv2c GET (чтение sysLocation)
+   - SNMPv2c SET (запись sysLocation)
+   - SNMPv3 инициализация с Engine Discovery
+   - SNMPv3 GET (чтение sysLocation)
+   - SNMPv3 SET (запись sysLocation)
+   - Верификация V2→V3 (проверка что SET v2 виден из v3)
+   - SNMPv3 Walk (ifDescr)
+   - SNMPv3 BulkWalk (ifDescr)
 
 ### Ожидаемый результат
 

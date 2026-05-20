@@ -35,6 +35,7 @@ Commercial support and custom development available.
 - TRAP/INFORM reception with automatic ACK
 - Minimal dependencies: only `github.com/OlegPowerC/asn1modsnmp`
 - Partial error handling support
+- IPv4/Pv6 supported
 
 ---
 
@@ -1406,6 +1407,9 @@ Full testing requires a **real SNMP device** (switch, router).
 
 ### Running Tests
 
+use the **checkparams** tag for test parameters validation functions.  
+use the **integration** tag for test with real device.
+
 ```bash
 go test -v -tags=integration -args \
     -h <DEVICE_IP> \
@@ -1416,11 +1420,18 @@ go test -v -tags=integration -args \
     -X <PRIV_PASS> \
     -c <COMMUNITY>
 ```
-The **community** string must be **RW** for all integration tests to pass  
+To ensure all integration tests pass, the community string must have RW permissions,
+and the SNMPv3 user must also have read and write access.
 
 **Example:**
+
 ```bash
-go test -v -tags=integration -args -h 192.168.1.252 -u SNMPv3-U -a sha -A test123 -x aes -X test321 -c private123
+go test -v -tags=integration -args -h 192.168.1.252 -u snmpuser -a sha -A test123 -x aes -X test321 -c private123
+```
+Example with IPv6:  
+
+```bash
+go test -v -tags=integration -args -h  2001:db8:1::120 -u snmpuser -a sha -A test123 -x aes -X test321 -c private123
 ```
 
 ### What is Tested
@@ -1437,17 +1448,22 @@ go test -v -tags=integration -args -h 192.168.1.252 -u SNMPv3-U -a sha -A test12
    - `TestConvert_snmpint_to_uint32` - SNMP uint32
    - `TestConvert_Covert_OID_StringToIntArray` - string to OID
    - `Test_PKCS5Padding` - PKCS5 padding/unpadding
+   - `TestCheckUserParams` - validation snmp parametesrs
+   - `TestSetAuthPrivParamsStToInt` - validation/conversion snmp auth/priv parametesrs
+   - `TestCheckParamsIPandPortSNMP` - validation ip, port
+   - `TestBasicCheckParamsVersionSNMP` - validation SNMP version check
+   - `TestBasicCheckParamsVersion2SNMP` - validation SNMP v2 parameters
 
 2. **Integration tests** (device required):
    - `TestSNMPv3Session_SNMP_Get_Set_Walk`:
-     - SNMPv2c GET (read sysLocation)
-     - SNMPv2c SET (write sysLocation)
-     - SNMPv3 initialization with Engine Discovery
-     - SNMPv3 GET (read sysLocation)
-     - SNMPv3 SET (write sysLocation)
-     - V2→V3 verification (check that v2 SET is visible from v3)
-     - SNMPv3 Walk (ifDescr)
-     - SNMPv3 BulkWalk (ifDescr)
+   - SNMPv2c GET (read sysLocation)
+   - SNMPv2c SET (write sysLocation)
+   - SNMPv3 initialization with Engine Discovery
+   - SNMPv3 GET (read sysLocation)
+   - SNMPv3 SET (write sysLocation)
+   - V2→V3 verification (check that v2 SET is visible from v3)
+   - SNMPv3 Walk (ifDescr)
+   - SNMPv3 BulkWalk (ifDescr)
 
 ### Expected Output
 

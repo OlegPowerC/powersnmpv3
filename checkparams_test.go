@@ -1,3 +1,5 @@
+//go:build checkparams
+
 package PowerSNMPv3
 
 import (

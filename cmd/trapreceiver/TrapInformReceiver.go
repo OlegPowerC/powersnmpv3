@@ -76,11 +76,11 @@ func PrTrap(addr string, port int, data []byte, Userv3Map map[string]*PowerSNMP.
 	}
 
 	//Конвертации в правильную версию для описания
-	SNMPv3UserFoPrint := "3"
+	SNMPv3VerPrint := "3"
 	if SNMPver == 1 {
-		SNMPv3UserFoPrint = "2c"
+		SNMPv3VerPrint = "2c"
 	}
-	fmt.Println("Принят trap/inform версии", SNMPv3UserFoPrint, "Пользователь/Community", SNMPv3User)
+	fmt.Println("Принят trap/inform версии", SNMPv3VerPrint, "Пользователь/Community", SNMPv3User)
 
 	if SNMPver == 3 {
 		fmt.Println("Данные Security:")
