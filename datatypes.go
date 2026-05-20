@@ -26,22 +26,22 @@ var allowedAuthProtoSt []string = []string{"sha", "sha224", "sha256", "sha384", 
 var allowedPrivProtoSt []string = []string{"aes", "aes192", "aes256", "aes192a", "aes256a", "des", "none"}
 
 var authProtocols map[string]authPrivProtocolDescr = map[string]authPrivProtocolDescr{
-	"none":   authPrivProtocolDescr{non: true, intVar: AUTH_PROTOCOL_NONE},
-	"sha":    authPrivProtocolDescr{non: false, intVar: AUTH_PROTOCOL_SHA},
-	"sha224": authPrivProtocolDescr{non: false, intVar: AUTH_PROTOCOL_SHA224},
-	"sha256": authPrivProtocolDescr{non: false, intVar: AUTH_PROTOCOL_SHA256},
-	"sha384": authPrivProtocolDescr{non: false, intVar: AUTH_PROTOCOL_SHA384},
-	"sha512": authPrivProtocolDescr{non: false, intVar: AUTH_PROTOCOL_SHA512},
-	"md5":    authPrivProtocolDescr{non: false, intVar: AUTH_PROTOCOL_MD5}}
+	"none":   {non: true, intVar: AUTH_PROTOCOL_NONE},
+	"sha":    {non: false, intVar: AUTH_PROTOCOL_SHA},
+	"sha224": {non: false, intVar: AUTH_PROTOCOL_SHA224},
+	"sha256": {non: false, intVar: AUTH_PROTOCOL_SHA256},
+	"sha384": {non: false, intVar: AUTH_PROTOCOL_SHA384},
+	"sha512": {non: false, intVar: AUTH_PROTOCOL_SHA512},
+	"md5":    {non: false, intVar: AUTH_PROTOCOL_MD5}}
 
 var privhProtocols map[string]authPrivProtocolDescr = map[string]authPrivProtocolDescr{
-	"none":    authPrivProtocolDescr{non: true, intVar: PRIV_PROTOCOL_NONE},
-	"aes":     authPrivProtocolDescr{non: false, intVar: PRIV_PROTOCOL_AES128},
-	"aes192":  authPrivProtocolDescr{non: false, intVar: PRIV_PROTOCOL_AES192},
-	"aes192a": authPrivProtocolDescr{non: false, intVar: PRIV_PROTOCOL_AES192A},
-	"aes256":  authPrivProtocolDescr{non: false, intVar: PRIV_PROTOCOL_AES256},
-	"aes256a": authPrivProtocolDescr{non: false, intVar: PRIV_PROTOCOL_AES256A},
-	"des":     authPrivProtocolDescr{non: false, intVar: PRIV_PROTOCOL_DES}}
+	"none":    {non: true, intVar: PRIV_PROTOCOL_NONE},
+	"aes":     {non: false, intVar: PRIV_PROTOCOL_AES128},
+	"aes192":  {non: false, intVar: PRIV_PROTOCOL_AES192},
+	"aes192a": {non: false, intVar: PRIV_PROTOCOL_AES192A},
+	"aes256":  {non: false, intVar: PRIV_PROTOCOL_AES256},
+	"aes256a": {non: false, intVar: PRIV_PROTOCOL_AES256A},
+	"des":     {non: false, intVar: PRIV_PROTOCOL_DES}}
 
 var SNMPErrorNames = map[int]string{
 	sNMP_ErrNoError:                           "NoError",
