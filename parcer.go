@@ -280,17 +280,19 @@ func receiverV2parser(SNMPparameters *SNMPv3Session, packet []byte, checkmsg_req
 //   - SNMPv3  → userName + USM parameters (secLevel, authP, privP)
 //
 // Zero-copy for v2c, minimal ASN.1 unmarshaling for v3 header only.
-func ParseTrapUsername(packet []byte) (version int, username string, v3secdata SNMPv3_SecSeq, err error) {
+func ParseTrapUsername(packet []byte) (version int, username string, v3secdata SNMPv3_SecSeq, v3globaldata SNMPv3_GlobalData, err error) {
 	var SNMP_UnknownVersionPacket_Data SNMP_UnknownVersionPacket
 	var v3secd SNMPv3_SecSeq
+	var v3globald SNMPv3_GlobalData
 	var umerr error
+
 	_, umerr = ASNber.Unmarshal(packet, &SNMP_UnknownVersionPacket_Data)
 	if umerr != nil {
-		return 0, "", v3secd, umerr
+		return 0, "", v3secd, v3globald, umerr
 	}
 
 	if SNMP_UnknownVersionPacket_Data.Version != 1 && SNMP_UnknownVersionPacket_Data.Version != 3 {
-		return 0, "", v3secd, fmt.Errorf("SNMP protocol version: %d not supported", SNMP_UnknownVersionPacket_Data.Version)
+		return 0, "", v3secd, v3globald, fmt.Errorf("SNMP protocol version: %d not supported", SNMP_UnknownVersionPacket_Data.Version)
 	}
 
 	// Для SNMPv2 извлекаем Community String как "username"
@@ -298,26 +300,33 @@ func ParseTrapUsername(packet []byte) (version int, username string, v3secdata S
 		var vs SNMP_Packet_V2
 		_, umerr = ASNber.Unmarshal(packet, &vs)
 		if umerr != nil {
-			return 0, "", v3secd, umerr
+			return 0, "", v3secd, v3globald, umerr
 		}
-		return SNMP_UnknownVersionPacket_Data.Version, string(vs.V2CcommunityString), v3secd, nil
+		return SNMP_UnknownVersionPacket_Data.Version, string(vs.V2CcommunityString), v3secd, v3globald, nil
 	}
 
 	// Для SNMPv3 извлекаем Username и Secutiry Settings
 	var SNMPrecivedPacket SNMPv3_Packet
 	_, umerr = ASNber.Unmarshal(packet, &SNMPrecivedPacket)
 	if umerr != nil {
-		return 0, "", v3secd, umerr
+		return 0, "", v3secd, v3globald, umerr
+	}
+
+	//Парсим RAW данные GlobalData из SNMPrecivedPacket
+	_, umerr = ASNber.Unmarshal(SNMPrecivedPacket.GlobalData.FullBytes, &v3globald)
+	if umerr != nil {
+		//Ошибка парсинга
+		return 0, "", v3secd, v3globald, umerr
 	}
 
 	var RecivedSecurity SNMPv3_SecSeq
 	_, umerr = ASNber.Unmarshal(SNMPrecivedPacket.SecuritySettings, &RecivedSecurity)
 	if umerr != nil {
-		return 0, "", v3secd, umerr
+		return 0, "", v3secd, v3globald, umerr
 	}
 
 	v3secd = RecivedSecurity
-	return SNMP_UnknownVersionPacket_Data.Version, string(RecivedSecurity.User), v3secd, nil
+	return SNMP_UnknownVersionPacket_Data.Version, string(RecivedSecurity.User), v3secd, v3globald, nil
 }
 
 func receiverV3parser(SNMPparameters *SNMPv3Session, udppayload []byte, checkmsg_req_id bool, reqid int32) (SNMPretPacket SNMPv3_DecodePacket, err error) {
