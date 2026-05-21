@@ -54,6 +54,7 @@ snmpinform можно заменить на snmptrap чтоб протестир
 func PrTrap(addr string, port int, data []byte, Userv3Map map[string]*PowerSNMP.SNMPTrapParameters) {
 	var SNMPlp PowerSNMP.SNMPLocalParams
 	//Приняли трап или информ
+
 	SNMPver, SNMPv3User, v3SecData, _, PuErr := PowerSNMP.ParseTrapUsername(data)
 	if PuErr != nil {
 		fmt.Println("Ошибка разбора пакета")
