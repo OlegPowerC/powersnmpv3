@@ -130,9 +130,7 @@ func (Session *SNMPv3Session) embeddedDiscovery(rts SNMPv3_DecodePacket) error {
 
 	}
 
-	OID_UnknownEngineID := ASNber.ObjectIdentifier([]int{1, 3, 6, 1, 6, 3, 15, 1, 1, 4, 0})
-
-	if !rts.V3PDU.V2VarBind.VarBinds[0].RSnmpOID.Equal(OID_UnknownEngineID) {
+	if !rts.V3PDU.V2VarBind.VarBinds[0].RSnmpOID.Equal(OID_UnknownEngineId) {
 		return errors.New("wrong report")
 	}
 
@@ -272,10 +270,7 @@ func SNMPv3_Discovery(Ndev NetworkDevice) (SNMPsession *SNMPv3Session, err error
 	Session.SNMPparams.PrivProtocol = pproto
 	Session.SNMPparams.PrivKey = Ndev.SNMPparameters.PrivKey
 
-	//oid := make([]int, 0)
-	Oid := []int{1, 3, 6, 1, 2, 1, 1, 1, 0}
-
-	_, complexerr := Session.snmpv3_GetSet([]SNMP_Packet_V2_Decoded_VarBind{{Oid, SNMPvbNullValue}}, SNMPv2_REQUEST_GET)
+	_, complexerr := Session.snmpv3_GetSet([]SNMP_Packet_V2_Decoded_VarBind{{internaluseOID_SysDescr, SNMPvbNullValue}}, SNMPv2_REQUEST_GET)
 	if complexerr != nil {
 		ReturnError = complexerr
 		return Session, ReturnError
@@ -549,7 +544,7 @@ func (SNMPparameters *SNMPv3Session) sendSnmpv3GetRequestPrototype(oidValue []SN
 				//Ошибок чтения нет
 				//Пакет получен, разберем его
 				var parcerror error
-				ReturnSNMPpacker, parcerror = receiverV3parser(SNMPparameters, p[:rlen], true, LocalRequestId)
+				ReturnSNMPpacker, parcerror = receiverV3parser(SNMPparameters, p[:rlen], true, false, LocalRequestId)
 				if parcerror != nil {
 					if errors.As(parcerror, &recerr) {
 						if recerr.ErrorStatusCode == PARCE_ERR_WRONGMSGID || recerr.ErrorStatusCode == PARCE_ERR_WRONGREQID {
@@ -944,8 +939,7 @@ func (SNMPparameters *SNMPv3Session) sendV3ACK(requestid int32) (err error) {
 		}
 	}()
 
-	Oid := []int{1, 3, 6, 1, 2, 1, 1, 3, 0}
-	OidVarConverted := []SNMP_Packet_V2_VarBind{{Oid, ASNber.NullRawValue}}
+	OidVarConverted := []SNMP_Packet_V2_VarBind{{internaluseOID_SysUpTime, ASNber.NullRawValue}}
 
 	MS, lasterr := SNMPparameters.makeMessage(OidVarConverted, SNMPv2_REQUEST_RESPONSE, requestid, 0, 0)
 	if lasterr != nil {

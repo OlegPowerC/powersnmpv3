@@ -22,6 +22,9 @@ var OID_UnknownContext = []int{1, 3, 6, 1, 6, 3, 12, 1, 5, 0}
 var OID_UnsupportedSecLevels = []int{1, 3, 6, 1, 6, 3, 15, 1, 1, 1, 0}
 var OID_UnknownEngineId = []int{1, 3, 6, 1, 6, 3, 15, 1, 1, 4, 0}
 
+var internaluseOID_SysDescr = []int{1, 3, 6, 1, 2, 1, 1, 1, 0}
+var internaluseOID_SysUpTime = []int{1, 3, 6, 1, 2, 1, 1, 3, 0}
+
 var allowedAuthProtoSt []string = []string{"sha", "sha224", "sha256", "sha384", "sha512", "md5", "none"}
 var allowedPrivProtoSt []string = []string{"aes", "aes192", "aes256", "aes192a", "aes256a", "des", "none"}
 
@@ -458,6 +461,14 @@ type SNMPTrapParameters struct {
 	PrivKey      string
 	PrivProtocol string
 	Community    string
+}
+
+type SNMPLocalParams struct {
+	//Локальный Engine ID который возможно придется отдать агенту по запросу.
+	//И boots/time
+	LocalEngineID []byte
+	RBoots        atomic.Int32
+	RTime         atomic.Int32
 }
 
 type SNMPv3Session struct {

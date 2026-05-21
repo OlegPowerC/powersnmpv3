@@ -115,10 +115,11 @@ const (
 )
 
 const (
-	// SNMP Notification Types
-	REPORT_MESSAGE = 1
-	TRAP_MESSAGE   = 2
-	INFORM_MESSAGE = 3
+	// SNMP message Types
+	GETREQUEST_MESSAGE = 0
+	REPORT_MESSAGE     = 1
+	TRAP_MESSAGE       = 2
+	INFORM_MESSAGE     = 3
 )
 
 const (
