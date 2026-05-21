@@ -237,6 +237,7 @@ func SNMPv3_Discovery(Ndev NetworkDevice) (SNMPsession *SNMPv3Session, err error
 	Session.SNMPparams.PrivKey = Ndev.SNMPparameters.PrivKey
 	Session.SNMPparams.MessageIDv2 = rand.Int31()
 	Session.SNMPparams.MessageId = rand.Int31()
+	//Тут устанавливается Reportable флаг и будет жить всю сессию
 	atomic.OrUint32(&Session.SNMPparams.DataFlag, 1<<msgFlag_Reportable_Bit)
 
 	Session.SNMPparams.Username = Ndev.SNMPparameters.Username
@@ -942,6 +943,43 @@ func (SNMPparameters *SNMPv3Session) sendV3ACK(requestid int32) (err error) {
 	OidVarConverted := []SNMP_Packet_V2_VarBind{{internaluseOID_SysUpTime, ASNber.NullRawValue}}
 
 	MS, lasterr := SNMPparameters.makeMessage(OidVarConverted, SNMPv2_REQUEST_RESPONSE, requestid, 0, 0)
+	if lasterr != nil {
+		return lasterr
+	}
+	lasterr = conn.SetWriteDeadline(time.Now().Add(Tmms))
+	if lasterr != nil {
+		return lasterr
+	}
+	writedn, lasterr := conn.Write(MS)
+	if lasterr != nil {
+		return lasterr
+	}
+	if writedn == 0 {
+		lasterr = fmt.Errorf("SNMPv3 Write error")
+	}
+	return lasterr
+}
+
+func (SNMPparameters *SNMPv3Session) sendV3REPORT(requestid int32, ReportType []int) (err error) {
+	var lasterr error
+	Tmms := time.Duration(SNMPparameters.SNMPparams.TimeoutBtwRepeat) * time.Millisecond
+	Ds := net.Dialer{Timeout: Tmms}
+	//DialAddress := fmt.Sprintf("%s:%d", SNMPparameters.IPaddress, SNMPparameters.Port)
+	DialAddress := net.JoinHostPort(SNMPparameters.IPaddress, fmt.Sprintf("%d", SNMPparameters.Port))
+	conn, dialerr := Ds.Dial("udp", DialAddress)
+	if dialerr != nil {
+		return dialerr
+	}
+	defer func() {
+		cerrc := conn.Close()
+		if cerrc != nil && lasterr == nil {
+			err = cerrc
+		}
+	}()
+
+	OidVarConverted := []SNMP_Packet_V2_VarBind{{internaluseOID_SysUpTime, ASNber.NullRawValue}}
+
+	MS, lasterr := SNMPparameters.makeMessage(OidVarConverted, 8, requestid, 0, 0)
 	if lasterr != nil {
 		return lasterr
 	}

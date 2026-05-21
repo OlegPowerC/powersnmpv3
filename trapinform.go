@@ -2,6 +2,7 @@ package PowerSNMPv3
 
 import (
 	"fmt"
+	"slices"
 
 	ASNber "github.com/OlegPowerC/asn1modsnmp"
 )
@@ -209,4 +210,69 @@ func ParseTrapUsername(packet []byte) (version int, username string, v3secdata S
 
 	v3secd = RecivedSecurity
 	return SNMP_UnknownVersionPacket_Data.Version, string(RecivedSecurity.User), v3secd, v3globald, nil
+}
+
+func ParceInformInvalidData(SenderIp string, SenderPort int, packet []byte, UserData SNMPTrapParameters, LocalEBT SNMPLocalParams, debuglevel uint8) (err error) {
+	//Оптравитель перед посылкой Inform, может сначала попробовать определить EngineID/Boots/Time
+	var SNMPparameters SNMPv3Session
+	var ReturnSNMPpacket SNMP_Packet_V2_decoded_PDU
+
+	SNMPparameters.Debuglevel = debuglevel
+	SNMPparameters.SNMPparams.SecurityLevel = SECLEVEL_NOAUTH_NOPRIV
+	SNMPparameters.SNMPparams.AuthProtocol = AUTH_PROTOCOL_NONE
+	SNMPparameters.SNMPparams.AuthKey = ""
+	SNMPparameters.SNMPparams.PrivProtocol = PRIV_PROTOCOL_NONE
+	SNMPparameters.SNMPparams.PrivKey = ""
+	SNMPparameters.SNMPparams.Username = UserData.Username
+	SNMPparameters.SNMPparams.SNMPversion = 3
+	SNMPparameters.SNMPparams.Community = ""
+	SNMPparameters.SNMPparams.MaxMsgSize = 1360
+	SNMPparameters.SNMPparams.txMaxMsgSize = 1360
+	SNMPparameters.IPaddress = SenderIp
+	SNMPparameters.SNMPparams.TimeoutBtwRepeat = 300
+	SNMPparameters.Port = SenderPort
+
+	SNMPparameters.SNMPparams.EngineID = LocalEBT.LocalEngineID
+	SNMPparameters.SNMPparams.RBoots = LocalEBT.RBoots.Load()
+	SNMPparameters.SNMPparams.RTime = LocalEBT.RTime.Load()
+
+	var SNMP_UnknownVersionPacket_Data SNMP_UnknownVersionPacket
+
+	var SNMPpackerv3_FP SNMPv3_DecodePacket
+	var MsgType int
+	_, umerr := ASNber.Unmarshal(packet, &SNMP_UnknownVersionPacket_Data)
+	if umerr != nil {
+		return umerr
+	}
+	if SNMP_UnknownVersionPacket_Data.Version != 3 {
+		return fmt.Errorf("SNMP protocol version: %d not supported", SNMP_UnknownVersionPacket_Data.Version)
+	}
+	if SNMP_UnknownVersionPacket_Data.Version == 3 {
+		SNMPpackerv3_FP, umerr = parseSNMPv3Packet(&SNMPparameters, false, packet)
+		if umerr == nil {
+			ReturnSNMPpacket = SNMPpackerv3_FP.V3PDU.V2VarBind
+			MsgType = SNMPpackerv3_FP.MessageType
+		}
+
+	}
+
+	if umerr == nil && MsgType == GETREQUEST_MESSAGE {
+		//Надо отправить REPORT
+		var ReportToSend []int
+		if !slices.Equal(SNMPpackerv3_FP.SecuritySettings.AuthEng, LocalEBT.LocalEngineID) {
+			ReportToSend = OID_UnknownEngineId
+		} else {
+			if SNMPpackerv3_FP.SecuritySettings.Time != LocalEBT.RTime.Load() || SNMPpackerv3_FP.SecuritySettings.Boots != LocalEBT.RBoots.Load() {
+				ReportToSend = OID_NoInTime
+			}
+		}
+
+		if len(ReportToSend) > 0 {
+			SNMPparameters.SNMPparams.DataFlag = 0
+			umerr = SNMPparameters.sendV3REPORT(ReturnSNMPpacket.RequestID, ReportToSend)
+		}
+
+	}
+
+	return umerr
 }
