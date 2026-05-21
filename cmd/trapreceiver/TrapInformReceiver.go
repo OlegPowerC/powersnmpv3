@@ -52,6 +52,7 @@ snmpinform можно заменить на snmptrap чтоб протестир
 */
 
 func PrTrap(addr string, port int, data []byte, Userv3Map map[string]*PowerSNMP.SNMPTrapParameters) {
+	var SNMPlp PowerSNMP.SNMPLocalParams
 	//Приняли трап или информ
 	SNMPver, SNMPv3User, v3SecData, _, PuErr := PowerSNMP.ParseTrapUsername(data)
 	if PuErr != nil {
@@ -91,7 +92,7 @@ func PrTrap(addr string, port int, data []byte, Userv3Map map[string]*PowerSNMP.
 		fmt.Printf("Boots: %d, Time: %d, EngineID %s\r\n", v3SecData.Boots, v3SecData.Time, EngineIdHstr)
 	}
 
-	pversion, pmsgtype, datadec, err := PowerSNMP.ParseTrapWithCredentials(addr, port, data, credentials, 0)
+	pversion, pmsgtype, datadec, err := PowerSNMP.ParseTrapWithCredentials(addr, port, data, credentials, SNMPlp, true, 0)
 
 	if err != nil {
 		fmt.Printf("Неудалось разобрать пакет: %v\n", err)
