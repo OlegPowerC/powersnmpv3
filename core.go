@@ -926,22 +926,6 @@ func (SNMPparameters *SNMPv3Session) snmpv3_Walk_WCallback(Oid []int, ReqType in
 func (SNMPparameters *SNMPv3Session) sendV3ACK(conn net.PacketConn, dstAddr net.Addr, requestid int32) (err error) {
 	var lasterr error
 	Tmms := time.Duration(SNMPparameters.SNMPparams.TimeoutBtwRepeat) * time.Millisecond
-	/*
-		Ds := net.Dialer{Timeout: Tmms}
-		//DialAddress := fmt.Sprintf("%s:%d", SNMPparameters.IPaddress, SNMPparameters.Port)
-		DialAddress := net.JoinHostPort(SNMPparameters.IPaddress, fmt.Sprintf("%d", SNMPparameters.Port))
-		conn, dialerr := Ds.Dial("udp", DialAddress)
-		if dialerr != nil {
-			return dialerr
-		}
-		defer func() {
-			cerrc := conn.Close()
-			if cerrc != nil && lasterr == nil {
-				err = cerrc
-			}
-		}()
-
-	*/
 
 	OidVarConverted := []SNMP_Packet_V2_VarBind{{internaluseOID_SysUpTime, ASNber.NullRawValue}}
 
@@ -966,24 +950,8 @@ func (SNMPparameters *SNMPv3Session) sendV3ACK(conn net.PacketConn, dstAddr net.
 func (SNMPparameters *SNMPv3Session) sendV3REPORT(conn net.PacketConn, dstAddr net.Addr, requestid int32, ReportType []int) (err error) {
 	var lasterr error
 	Tmms := time.Duration(SNMPparameters.SNMPparams.TimeoutBtwRepeat) * time.Millisecond
-	/*
-		Ds := net.Dialer{Timeout: Tmms}
-		//DialAddress := fmt.Sprintf("%s:%d", SNMPparameters.IPaddress, SNMPparameters.Port)
-		DialAddress := net.JoinHostPort(SNMPparameters.IPaddress, fmt.Sprintf("%d", SNMPparameters.Port))
-		conn, dialerr := Ds.Dial("udp", DialAddress)
-		if dialerr != nil {
-			return dialerr
-		}
-		defer func() {
-			cerrc := conn.Close()
-			if cerrc != nil && lasterr == nil {
-				err = cerrc
-			}
-		}()
 
-	*/
-
-	OidVarConverted := []SNMP_Packet_V2_VarBind{{internaluseOID_SysUpTime, ASNber.NullRawValue}}
+	OidVarConverted := []SNMP_Packet_V2_VarBind{{ReportType, ASNber.NullRawValue}}
 
 	MS, lasterr := SNMPparameters.makeMessage(OidVarConverted, 8, requestid, 0, 0)
 	if lasterr != nil {
