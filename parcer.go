@@ -1,4 +1,4 @@
-// PowerSNMPv3 - SNMP library for Go
+// Package PowerSNMPv3 - SNMP library for Go
 // Автор: Волков Олег
 // Author: Volkov Oleg
 // License: MIT
@@ -16,21 +16,21 @@ import (
 	ASNber "github.com/OlegPowerC/asn1modsnmp"
 )
 
-func parseSNMPv3Packet(SNMPparameters *SNMPv3Session, cpboottimeid bool, packet []byte) (decryptedData SNMPv3_DecodePacket, err error) {
+func (SNMPparameters *SNMPv3Session) parseSNMPv3Packet(cpboottimeid bool, packet []byte) (decryptedData SNMPv3_DecodePacket, err error) {
 	var RetPacket SNMPv3_DecodePacket
 	var SNMPDataErr error
-	RetPacket, SNMPDataErr = receiverV3parser(SNMPparameters, packet, false, cpboottimeid, 0)
+	RetPacket, SNMPDataErr = SNMPparameters.receiverV3parser(packet, false, cpboottimeid, 0)
 	return RetPacket, SNMPDataErr
 }
 
-func parseSNMPv2Packet(SNMPparameters *SNMPv3Session, packet []byte) (decryptedData SNMPv2_DecodePacket, err error) {
+func (SNMPparameters *SNMPv3Session) parseSNMPv2Packet(packet []byte) (decryptedData SNMPv2_DecodePacket, err error) {
 	var RetPacket SNMPv2_DecodePacket
 	var SNMPDataErr error
-	RetPacket, SNMPDataErr = receiverV2parser(SNMPparameters, packet, false, 0)
+	RetPacket, SNMPDataErr = SNMPparameters.receiverV2parser(packet, false, 0)
 	return RetPacket, SNMPDataErr
 }
 
-func receiverV2parser(SNMPparameters *SNMPv3Session, packet []byte, checkmsg_req_id bool, reqid int32) (decodedDatav2 SNMPv2_DecodePacket, errorv2 error) {
+func (SNMPparameters *SNMPv3Session) receiverV2parser(packet []byte, checkmsg_req_id bool, reqid int32) (decodedDatav2 SNMPv2_DecodePacket, errorv2 error) {
 	var vs SNMP_Packet_V2
 	var RetVar SNMPv2_DecodePacket
 	var pdu1 SNMP_Packet_V2_PDU
@@ -87,7 +87,7 @@ func receiverV2parser(SNMPparameters *SNMPv3Session, packet []byte, checkmsg_req
 	RetVar.V2PDU.ErrorStatusRaw = pdu1.ErrorStatusRaw
 
 	if pdu1.ErrorStatusRaw != sNMP_ErrNoError {
-		failedOID := []int{}
+		var failedOID []int
 		//Скопируем проблемный OID
 		if pdu1.ErrorIndexRaw > 0 {
 			if int(pdu1.ErrorIndexRaw-1) < len(pdu1.VarBinds) {
@@ -131,14 +131,65 @@ func receiverV2parser(SNMPparameters *SNMPv3Session, packet []byte, checkmsg_req
 	return RetVar, nil
 }
 
-func receiverV3parser(SNMPparameters *SNMPv3Session, udppayload []byte, checkmsg_req_id bool, cpboottimeeid bool, reqid int32) (SNMPretPacket SNMPv3_DecodePacket, err error) {
-	var pdudecoded SNMP_Packet_V2_decoded_PDU
+func (SNMPparameters *SNMPv3Session) receiverV3parser(udppayload []byte, checkmsg_req_id bool, cpboottimeeid bool, reqid int32) (SNMPretPacket SNMPv3_DecodePacket, err error) {
 	var ReturnSNMPpacker SNMPv3_DecodePacket
+	var SNMPrecivedPacket SNMPv3_DhPacket
+	SNMPrecivedPacket, pheadererr := SNMPparameters.receiverV3Hparser(udppayload, checkmsg_req_id)
+	if pheadererr != nil {
+		return ReturnSNMPpacker, pheadererr
+	}
+
+	return SNMPparameters.receiverV3Bparser(udppayload, &SNMPrecivedPacket, checkmsg_req_id, cpboottimeeid, reqid)
+}
+
+func (SNMPparameters *SNMPv3Session) receiverV3Hparser(udppayload []byte, checkmsg_req_id bool) (SNMPretPacket SNMPv3_DhPacket, err error) {
 	var SNMPrecivedPacket SNMPv3_Packet
-	var pdu1 SNMP_Packet_V2_PDU
+	var SNMPDhRetPacket SNMPv3_DhPacket
 	var umerr error
+
+	//Прасим payload в структуку
+	_, umerr = ASNber.Unmarshal(udppayload, &SNMPrecivedPacket)
+	if umerr != nil {
+		//Ошибка парсинга
+		return SNMPDhRetPacket, umerr
+	}
+
+	//Парсим RAW данные GlobalData из SNMPrecivedPacket
+	_, umerr = ASNber.Unmarshal(SNMPrecivedPacket.GlobalData.FullBytes, &SNMPDhRetPacket.GlobalData)
+	if umerr != nil {
+		//Ошибка парсинга
+		return SNMPDhRetPacket, umerr
+	} else {
+		//Если парсер испоользуется не для приема трапов, то нужно проверить MessageID
+		if checkmsg_req_id {
+			if SNMPDhRetPacket.GlobalData.MsgID != atomic.LoadInt32(&SNMPparameters.SNMPparams.MessageId) {
+				umerr = SNMPwrongReqID_MsgId_Errors{PARCE_ERR_WRONGMSGID}
+				return SNMPDhRetPacket, umerr //errors.New("message ID not valid")
+			}
+		} else {
+			//Если это inform или trap то сохраним MsgID
+			atomic.StoreInt32(&SNMPparameters.SNMPparams.MessageId, SNMPDhRetPacket.GlobalData.MsgID)
+		}
+	}
+	//Парсим Security Settings
+	_, umerr = ASNber.Unmarshal(SNMPrecivedPacket.SecuritySettings, &SNMPDhRetPacket.SecuritySettings)
+	if umerr != nil {
+		return SNMPDhRetPacket, umerr
+	}
+
+	SNMPDhRetPacket.PtData = SNMPrecivedPacket.PtData
+	SNMPDhRetPacket.Version = SNMPrecivedPacket.Version
+	return SNMPDhRetPacket, nil
+}
+
+// Передать указатель на слайс с сырыми данными придется для аутентификации
+func (SNMPparameters *SNMPv3Session) receiverV3Bparser(udppayload []byte, SNMPv3Ppacker *SNMPv3_DhPacket, checkmsg_req_id bool, cpboottimeeid bool, reqid int32) (SNMPretPacket SNMPv3_DecodePacket, err error) {
+	var ReturnSNMPpacker SNMPv3_DecodePacket
+	var Recivedv3_PDU SNMPv3_PDU
+	var pdu1 SNMP_Packet_V2_PDU
 	var partialerr SNMPne_Errors
-	partialerr.Failedoids = make([]PowerSNMPv3_Errors_FailedOids_Error, 0)
+	var pdudecoded SNMP_Packet_V2_decoded_PDU
+	var umerr error
 
 	defer func() {
 		if umerr == nil && len(partialerr.Failedoids) > 0 {
@@ -146,50 +197,11 @@ func receiverV3parser(SNMPparameters *SNMPv3Session, udppayload []byte, checkmsg
 		}
 	}()
 
-	//Прасим payload в структуку
-	_, umerr = ASNber.Unmarshal(udppayload, &SNMPrecivedPacket)
-	if umerr != nil {
-		//Ошибка парсинга
-		return ReturnSNMPpacker, umerr
-	}
-
-	var RecivedGlobalParameters SNMPv3_GlobalData
-	var RecivedSecurity SNMPv3_SecSeq
-	var Recivedv3_PDU SNMPv3_PDU
-
-	//Парсим RAW данные GlobalData из SNMPrecivedPacket
-	_, umerr = ASNber.Unmarshal(SNMPrecivedPacket.GlobalData.FullBytes, &RecivedGlobalParameters)
-	if umerr != nil {
-		//Ошибка парсинга
-		return ReturnSNMPpacker, umerr
-	} else {
-		//Если парсер испоользуется не для приема трапов, то нужно проверить MessageID
-		if checkmsg_req_id {
-			if RecivedGlobalParameters.MsgID != atomic.LoadInt32(&SNMPparameters.SNMPparams.MessageId) {
-				umerr = SNMPwrongReqID_MsgId_Errors{PARCE_ERR_WRONGMSGID}
-				return ReturnSNMPpacker, umerr //errors.New("message ID not valid")
-			}
-		} else {
-			//Если это inform или trap то сохраним MsgID
-			atomic.StoreInt32(&SNMPparameters.SNMPparams.MessageId, RecivedGlobalParameters.MsgID)
-		}
-	}
-	//Парсим Security Settings
-	_, umerr = ASNber.Unmarshal(SNMPrecivedPacket.SecuritySettings, &RecivedSecurity)
-	if umerr != nil {
-		return ReturnSNMPpacker, umerr
-	}
-
-	if !checkmsg_req_id && cpboottimeeid {
-		atomic.StoreInt32(&SNMPparameters.SNMPparams.RBoots, RecivedSecurity.Boots)
-		atomic.StoreInt32(&SNMPparameters.SNMPparams.RTime, RecivedSecurity.Time)
-	}
-
-	if len(RecivedGlobalParameters.MsgFlag) > 0 && (RecivedGlobalParameters.MsgFlag[0]&(1<<msgFlag_Authenticated_Bit) != 0) {
+	if len(SNMPv3Ppacker.GlobalData.MsgFlag) > 0 && (SNMPv3Ppacker.GlobalData.MsgFlag[0]&(1<<msgFlag_Authenticated_Bit) != 0) {
 		if !checkmsg_req_id {
 			if cpboottimeeid {
 				//Берем EngineID из принятых данных а так же Boots и Time
-				SNMPparameters.SNMPparams.EngineID = RecivedSecurity.AuthEng
+				SNMPparameters.SNMPparams.EngineID = SNMPv3Ppacker.SecuritySettings.AuthEng
 			}
 
 			if SNMPparameters.SNMPparams.SecurityLevel > SECLEVEL_NOAUTH_NOPRIV {
@@ -200,7 +212,7 @@ func receiverV3parser(SNMPparameters *SNMPv3Session, udppayload []byte, checkmsg
 		}
 
 		digver := false
-		digver, umerr = verifyDigestRAW(udppayload, RecivedSecurity.AuthParams, SNMPparameters.SNMPparams.LocalizedKeyAuth, SNMPparameters.SNMPparams.AuthProtocol)
+		digver, umerr = verifyDigestRAW(udppayload, SNMPv3Ppacker.SecuritySettings.AuthParams, SNMPparameters.SNMPparams.LocalizedKeyAuth, SNMPparameters.SNMPparams.AuthProtocol)
 		if umerr != nil {
 			return ReturnSNMPpacker, umerr
 		}
@@ -210,11 +222,10 @@ func receiverV3parser(SNMPparameters *SNMPv3Session, udppayload []byte, checkmsg
 		}
 	}
 
-	if len(RecivedGlobalParameters.MsgFlag) > 0 && (RecivedGlobalParameters.MsgFlag[0]&(1<<msgFlag_Encrypted_Bit) != 0) {
+	if len(SNMPv3Ppacker.GlobalData.MsgFlag) > 0 && (SNMPv3Ppacker.GlobalData.MsgFlag[0]&(1<<msgFlag_Encrypted_Bit) != 0) {
 		//Нужно расшифровать потому что задан режим Priv
 		//Флаг в принятой датаграмме, поэтому если в параметрах пользователя задан режим AuthPriv
 		//А принятые данные не зашифрованы, они все равно корректно разберутся
-
 		if SNMPparameters.Debuglevel > 199 {
 			fmt.Println("Encrypted PDU")
 		}
@@ -238,12 +249,12 @@ func receiverV3parser(SNMPparameters *SNMPv3Session, udppayload []byte, checkmsg
 		}
 		//Выделяем буфер для расшифрованных данных
 		var DecryptedPDU []byte
-		SecParamByteArray := RecivedSecurity.PrivParams
+		SecParamByteArray := SNMPv3Ppacker.SecuritySettings.PrivParams
 		//Копируем принятые Boots, Time
 		TBoots := make([]byte, 4)
 		TTime := make([]byte, 4)
-		binary.BigEndian.PutUint32(TBoots, uint32(RecivedSecurity.Boots))
-		binary.BigEndian.PutUint32(TTime, uint32(RecivedSecurity.Time))
+		binary.BigEndian.PutUint32(TBoots, uint32(SNMPv3Ppacker.SecuritySettings.Boots))
+		binary.BigEndian.PutUint32(TTime, uint32(SNMPv3Ppacker.SecuritySettings.Time))
 
 		switch SNMPparameters.SNMPparams.PrivProtocol {
 		case PRIV_PROTOCOL_AES128, PRIV_PROTOCOL_AES192, PRIV_PROTOCOL_AES256, PRIV_PROTOCOL_AES192A, PRIV_PROTOCOL_AES256A:
@@ -256,7 +267,7 @@ func receiverV3parser(SNMPparameters *SNMPv3Session, udppayload []byte, checkmsg
 			IV = append(IV, TBoots...)
 			IV = append(IV, TTime...)
 			IV = append(IV, SecParamByteArray...)
-			DecryptedPDU, umerr = decryptAESCFB(SNMPrecivedPacket.PtData.Bytes, SNMPparameters.SNMPparams.LocalizedKeyPriv, IV)
+			DecryptedPDU, umerr = decryptAESCFB(SNMPv3Ppacker.PtData.Bytes, SNMPparameters.SNMPparams.LocalizedKeyPriv, IV)
 			if umerr != nil {
 				return ReturnSNMPpacker, umerr
 			}
@@ -266,7 +277,7 @@ func receiverV3parser(SNMPparameters *SNMPv3Session, udppayload []byte, checkmsg
 				return ReturnSNMPpacker, umerr
 			}
 			if len(SNMPparameters.SNMPparams.LocalizedKeyPriv) < 16 {
-				umerr = errors.New("Localized key for DES, must be 16 or more bytes")
+				umerr = errors.New("localized key for DES, must be 16 or more bytes")
 				return ReturnSNMPpacker, umerr
 			}
 			//Считаем вектор инициализаци DES, Pre IV это последние 8 байт из LocalizedKey
@@ -281,7 +292,7 @@ func receiverV3parser(SNMPparameters *SNMPv3Session, udppayload []byte, checkmsg
 				IV[i] = Pre_IV[i] ^ Salt[i]
 			}
 
-			DecryptedPDU, umerr = decryptDES(SNMPrecivedPacket.PtData.Bytes, SNMPparameters.SNMPparams.LocalizedKeyPriv[:8], IV)
+			DecryptedPDU, umerr = decryptDES(SNMPv3Ppacker.PtData.Bytes, SNMPparameters.SNMPparams.LocalizedKeyPriv[:8], IV)
 			if umerr != nil {
 				return ReturnSNMPpacker, umerr
 			}
@@ -290,7 +301,7 @@ func receiverV3parser(SNMPparameters *SNMPv3Session, udppayload []byte, checkmsg
 		_, umerr = ASNber.Unmarshal(DecryptedPDU, &Recivedv3_PDU)
 	} else {
 		//Данные не зашифрованы
-		_, umerr = ASNber.Unmarshal(SNMPrecivedPacket.PtData.FullBytes, &Recivedv3_PDU)
+		_, umerr = ASNber.Unmarshal(SNMPv3Ppacker.PtData.FullBytes, &Recivedv3_PDU)
 	}
 
 	if !checkmsg_req_id && cpboottimeeid {
@@ -329,7 +340,7 @@ func receiverV3parser(SNMPparameters *SNMPv3Session, udppayload []byte, checkmsg
 
 	if len(Recivedv3_PDU.V2VarBind.FullBytes) < 2 {
 		//длина данных нулевая
-		umerr = errors.New("Received PDU too short")
+		umerr = errors.New("received PDU too short")
 		return ReturnSNMPpacker, umerr
 	}
 
@@ -389,8 +400,8 @@ func receiverV3parser(SNMPparameters *SNMPv3Session, udppayload []byte, checkmsg
 			partialerr.AllOIDsFail = true
 		}
 	}
-	ReturnSNMPpacker.GlobalData = RecivedGlobalParameters
-	ReturnSNMPpacker.SecuritySettings = RecivedSecurity
+	ReturnSNMPpacker.GlobalData = SNMPv3Ppacker.GlobalData
+	ReturnSNMPpacker.SecuritySettings = SNMPv3Ppacker.SecuritySettings
 	ReturnSNMPpacker.V3PDU.ContextName = Recivedv3_PDU.ContextName
 	ReturnSNMPpacker.V3PDU.ContextEngineId = Recivedv3_PDU.ContextEngineId
 	ReturnSNMPpacker.V3PDU.V2VarBind.RequestID = pdu1.RequestID

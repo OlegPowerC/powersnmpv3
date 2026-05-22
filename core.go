@@ -21,7 +21,7 @@ import (
 	ASNber "github.com/OlegPowerC/asn1modsnmp"
 )
 
-func (Session *SNMPv3Session) embeddedNoInTime(rts SNMPv3_DecodePacket) error {
+func (SNMPparameters *SNMPv3Session) embeddedNoInTime(rts SNMPv3_DecodePacket) error {
 
 	RecivedBoots := rts.SecuritySettings.Boots
 	RecivedTime := rts.SecuritySettings.Time
@@ -29,9 +29,9 @@ func (Session *SNMPv3Session) embeddedNoInTime(rts SNMPv3_DecodePacket) error {
 	if RecivedBoots > 0 || RecivedTime > 0 {
 		// Некоторые SNMP агенты, при определении Engine ID не присылают Boots и Time
 		// поэтому их можно выставить после ополучения ошибки NoInTime с правильными значениями
-		Session.SNMPparams.DiscoveredTimeBoots.Store(true)
-		atomic.StoreInt32(&Session.SNMPparams.RBoots, RecivedBoots)
-		atomic.StoreInt32(&Session.SNMPparams.RTime, RecivedTime)
+		SNMPparameters.SNMPparams.DiscoveredTimeBoots.Store(true)
+		atomic.StoreInt32(&SNMPparameters.SNMPparams.RBoots, RecivedBoots)
+		atomic.StoreInt32(&SNMPparameters.SNMPparams.RTime, RecivedTime)
 
 	} else {
 		ReturnError = errors.New("time synchronization failed: boots and time are zero")
@@ -40,12 +40,12 @@ func (Session *SNMPv3Session) embeddedNoInTime(rts SNMPv3_DecodePacket) error {
 	return nil
 }
 
-func (Session *SNMPv3Session) reportHandle(rts SNMPv3_DecodePacket, OidVarConverted []SNMP_Packet_V2_VarBind, Request_Type int, nonRepeaters int32, maxRepetitions int32, depth uint8, perr error) (SNMPv3_DecodePacket, error) {
+func (SNMPparameters *SNMPv3Session) reportHandle(rts SNMPv3_DecodePacket, OidVarConverted []SNMP_Packet_V2_VarBind, Request_Type int, nonRepeaters int32, maxRepetitions int32, depth uint8, perr error) (SNMPv3_DecodePacket, error) {
 	if rts.MessageType != REPORT_MESSAGE {
 		return rts, perr
 	}
-	atomic.AddInt32(&Session.SNMPparams.MessageId, 1)
-	atomic.AddInt32(&Session.SNMPparams.MessageIDv2, 1)
+	atomic.AddInt32(&SNMPparameters.SNMPparams.MessageId, 1)
+	atomic.AddInt32(&SNMPparameters.SNMPparams.MessageIDv2, 1)
 	var ReturnError error
 	var ReturnVal SNMPv3_DecodePacket
 	var partialerr SNMPne_Errors
@@ -59,14 +59,14 @@ func (Session *SNMPv3Session) reportHandle(rts SNMPv3_DecodePacket, OidVarConver
 	}
 	if rts.V3PDU.V2VarBind.VarBinds[0].RSnmpOID.Equal(OID_NoInTime) {
 
-		stimeerr := Session.embeddedNoInTime(rts)
+		stimeerr := SNMPparameters.embeddedNoInTime(rts)
 		if stimeerr != nil {
 			return ReturnVal, stimeerr
 		}
 
 		//Повторный запрос
-		rtspreq, complexerr := Session.sendSnmpv3GetRequestPrototype(OidVarConverted, Request_Type, nonRepeaters, maxRepetitions)
-		rtsp, complexerrfr := Session.reportHandle(rtspreq, OidVarConverted, Request_Type, nonRepeaters, maxRepetitions, depth, complexerr)
+		rtspreq, complexerr := SNMPparameters.sendSnmpv3GetRequestPrototype(OidVarConverted, Request_Type, nonRepeaters, maxRepetitions)
+		rtsp, complexerrfr := SNMPparameters.reportHandle(rtspreq, OidVarConverted, Request_Type, nonRepeaters, maxRepetitions, depth, complexerr)
 		if complexerrfr != nil {
 			//Если есть серьезная ошибка, то выходим и возвращаем ее
 			if !errors.As(complexerrfr, &partialerr) {
@@ -77,14 +77,14 @@ func (Session *SNMPv3Session) reportHandle(rts SNMPv3_DecodePacket, OidVarConver
 		return rtsp, complexerrfr
 	}
 	if rts.V3PDU.V2VarBind.VarBinds[0].RSnmpOID.Equal(OID_UnknownEngineId) && depth == 1 {
-		discoer := Session.embeddedDiscovery(rts)
+		discoer := SNMPparameters.embeddedDiscovery(rts)
 		if discoer != nil {
 			return ReturnVal, fmt.Errorf("discovery failed: %v", discoer)
 		}
 
 		//Повторный запрос
-		rtspreq, complexerr := Session.sendSnmpv3GetRequestPrototype(OidVarConverted, Request_Type, nonRepeaters, maxRepetitions)
-		rtsp, complexerrfr := Session.reportHandle(rtspreq, OidVarConverted, Request_Type, nonRepeaters, maxRepetitions, depth, complexerr)
+		rtspreq, complexerr := SNMPparameters.sendSnmpv3GetRequestPrototype(OidVarConverted, Request_Type, nonRepeaters, maxRepetitions)
+		rtsp, complexerrfr := SNMPparameters.reportHandle(rtspreq, OidVarConverted, Request_Type, nonRepeaters, maxRepetitions, depth, complexerr)
 		if complexerrfr != nil {
 			//Если есть серьезная ошибка, то выходим и возвращаем ее
 			if !errors.As(complexerrfr, &partialerr) {
@@ -123,7 +123,7 @@ func (Session *SNMPv3Session) reportHandle(rts SNMPv3_DecodePacket, OidVarConver
 	return ReturnVal, ReturnError
 }
 
-func (Session *SNMPv3Session) embeddedDiscovery(rts SNMPv3_DecodePacket) error {
+func (SNMPparameters *SNMPv3Session) embeddedDiscovery(rts SNMPv3_DecodePacket) error {
 
 	if len(rts.V3PDU.V2VarBind.VarBinds) == 0 {
 		return errors.New("discovery failed: empty VarBinds in response")
@@ -134,50 +134,50 @@ func (Session *SNMPv3Session) embeddedDiscovery(rts SNMPv3_DecodePacket) error {
 		return errors.New("wrong report")
 	}
 
-	if Session.Debuglevel > 199 {
+	if SNMPparameters.Debuglevel > 199 {
 		fmt.Println("Unknown Engine ID!")
 		fmt.Println("Discovered Engine ID:", hex.EncodeToString(rts.SecuritySettings.AuthEng), "Discovered boots:", rts.SecuritySettings.Boots, "Discovered times:", rts.SecuritySettings.Time)
 	}
 
-	Session.SNMPparams.EngineID = rts.SecuritySettings.AuthEng
-	Session.SNMPparams.ContextEngineId = rts.SecuritySettings.AuthEng
+	SNMPparameters.SNMPparams.EngineID = rts.SecuritySettings.AuthEng
+	SNMPparameters.SNMPparams.ContextEngineId = rts.SecuritySettings.AuthEng
 
 	// Установим MaxMessageSize в сторону агента (из того что он нам предложил)
 	if rts.GlobalData.MsgMaxSize >= MIN_ALLOWED_TX_MAXMESSAGESIZE {
-		Session.SNMPparams.txMaxMsgSize = rts.GlobalData.MsgMaxSize
+		SNMPparameters.SNMPparams.txMaxMsgSize = rts.GlobalData.MsgMaxSize
 	}
 
-	if Session.SNMPparams.SecurityLevel > SECLEVEL_NOAUTH_NOPRIV {
-		Lkey := makeLocalizedKey(Session.SNMPparams.AuthKey, Session.SNMPparams.EngineID, Session.SNMPparams.AuthProtocol)
-		Session.SNMPparams.LocalizedKeyAuth = Lkey
-		atomic.OrUint32(&Session.SNMPparams.DataFlag, 1<<msgFlag_Authenticated_Bit)
+	if SNMPparameters.SNMPparams.SecurityLevel > SECLEVEL_NOAUTH_NOPRIV {
+		Lkey := makeLocalizedKey(SNMPparameters.SNMPparams.AuthKey, SNMPparameters.SNMPparams.EngineID, SNMPparameters.SNMPparams.AuthProtocol)
+		SNMPparameters.SNMPparams.LocalizedKeyAuth = Lkey
+		atomic.OrUint32(&SNMPparameters.SNMPparams.DataFlag, 1<<msgFlag_Authenticated_Bit)
 	}
 
-	if Session.SNMPparams.SecurityLevel == SECLEVEL_AUTHPRIV {
-		Lkey := makeLocalizedKey(Session.SNMPparams.PrivKey, Session.SNMPparams.EngineID, Session.SNMPparams.AuthProtocol)
+	if SNMPparameters.SNMPparams.SecurityLevel == SECLEVEL_AUTHPRIV {
+		Lkey := makeLocalizedKey(SNMPparameters.SNMPparams.PrivKey, SNMPparameters.SNMPparams.EngineID, SNMPparameters.SNMPparams.AuthProtocol)
 
-		switch Session.SNMPparams.PrivProtocol {
+		switch SNMPparameters.SNMPparams.PrivProtocol {
 		case PRIV_PROTOCOL_AES128:
 			if len(Lkey) > 16 {
 				Lkey = Lkey[:16] // Только AES128!
 			}
 		case PRIV_PROTOCOL_AES192, PRIV_PROTOCOL_AES256, PRIV_PROTOCOL_AES192A, PRIV_PROTOCOL_AES256A:
-			Lkey = expandPrivKey(Lkey, Session.SNMPparams.PrivProtocol, Session.SNMPparams.AuthProtocol, Session.SNMPparams.EngineID)
+			Lkey = expandPrivKey(Lkey, SNMPparameters.SNMPparams.PrivProtocol, SNMPparameters.SNMPparams.AuthProtocol, SNMPparameters.SNMPparams.EngineID)
 		}
 
-		Session.SNMPparams.LocalizedKeyPriv = Lkey
-		Session.SNMPparams.PrivParameter = rand.Uint64()
-		Session.SNMPparams.PrivParameterDes = rand.Uint32()
-		atomic.OrUint32(&Session.SNMPparams.DataFlag, 1<<msgFlag_Encrypted_Bit)
+		SNMPparameters.SNMPparams.LocalizedKeyPriv = Lkey
+		SNMPparameters.SNMPparams.PrivParameter = rand.Uint64()
+		SNMPparameters.SNMPparams.PrivParameterDes = rand.Uint32()
+		atomic.OrUint32(&SNMPparameters.SNMPparams.DataFlag, 1<<msgFlag_Encrypted_Bit)
 	}
 
 	if rts.SecuritySettings.Boots > 0 || rts.SecuritySettings.Time > 0 {
-		Session.SNMPparams.DiscoveredTimeBoots.Store(true)
-		atomic.StoreInt32(&Session.SNMPparams.RBoots, rts.SecuritySettings.Boots)
-		atomic.StoreInt32(&Session.SNMPparams.RTime, rts.SecuritySettings.Time)
+		SNMPparameters.SNMPparams.DiscoveredTimeBoots.Store(true)
+		atomic.StoreInt32(&SNMPparameters.SNMPparams.RBoots, rts.SecuritySettings.Boots)
+		atomic.StoreInt32(&SNMPparameters.SNMPparams.RTime, rts.SecuritySettings.Time)
 	}
 
-	Session.SNMPparams.DiscoveredEngineId.Store(true)
+	SNMPparameters.SNMPparams.DiscoveredEngineId.Store(true)
 
 	return nil
 }
@@ -545,7 +545,7 @@ func (SNMPparameters *SNMPv3Session) sendSnmpv3GetRequestPrototype(oidValue []SN
 				//Ошибок чтения нет
 				//Пакет получен, разберем его
 				var parcerror error
-				ReturnSNMPpacker, parcerror = receiverV3parser(SNMPparameters, p[:rlen], true, false, LocalRequestId)
+				ReturnSNMPpacker, parcerror = SNMPparameters.receiverV3parser(p[:rlen], true, false, LocalRequestId)
 				if parcerror != nil {
 					if errors.As(parcerror, &recerr) {
 						if recerr.ErrorStatusCode == PARCE_ERR_WRONGMSGID || recerr.ErrorStatusCode == PARCE_ERR_WRONGREQID {
@@ -923,22 +923,25 @@ func (SNMPparameters *SNMPv3Session) snmpv3_Walk_WCallback(Oid []int, ReqType in
 // RequestID to `1.3.6.1.2.1.1.3.0` (sysUpTime.0 null value).
 //
 // Required for INFORM compliance - sender retries without ACK.
-func (SNMPparameters *SNMPv3Session) sendV3ACK(requestid int32) (err error) {
+func (SNMPparameters *SNMPv3Session) sendV3ACK(conn net.PacketConn, dstAddr net.Addr, requestid int32) (err error) {
 	var lasterr error
 	Tmms := time.Duration(SNMPparameters.SNMPparams.TimeoutBtwRepeat) * time.Millisecond
-	Ds := net.Dialer{Timeout: Tmms}
-	//DialAddress := fmt.Sprintf("%s:%d", SNMPparameters.IPaddress, SNMPparameters.Port)
-	DialAddress := net.JoinHostPort(SNMPparameters.IPaddress, fmt.Sprintf("%d", SNMPparameters.Port))
-	conn, dialerr := Ds.Dial("udp", DialAddress)
-	if dialerr != nil {
-		return dialerr
-	}
-	defer func() {
-		cerrc := conn.Close()
-		if cerrc != nil && lasterr == nil {
-			err = cerrc
+	/*
+		Ds := net.Dialer{Timeout: Tmms}
+		//DialAddress := fmt.Sprintf("%s:%d", SNMPparameters.IPaddress, SNMPparameters.Port)
+		DialAddress := net.JoinHostPort(SNMPparameters.IPaddress, fmt.Sprintf("%d", SNMPparameters.Port))
+		conn, dialerr := Ds.Dial("udp", DialAddress)
+		if dialerr != nil {
+			return dialerr
 		}
-	}()
+		defer func() {
+			cerrc := conn.Close()
+			if cerrc != nil && lasterr == nil {
+				err = cerrc
+			}
+		}()
+
+	*/
 
 	OidVarConverted := []SNMP_Packet_V2_VarBind{{internaluseOID_SysUpTime, ASNber.NullRawValue}}
 
@@ -950,7 +953,7 @@ func (SNMPparameters *SNMPv3Session) sendV3ACK(requestid int32) (err error) {
 	if lasterr != nil {
 		return lasterr
 	}
-	writedn, lasterr := conn.Write(MS)
+	writedn, lasterr := conn.WriteTo(MS, dstAddr)
 	if lasterr != nil {
 		return lasterr
 	}
@@ -960,22 +963,25 @@ func (SNMPparameters *SNMPv3Session) sendV3ACK(requestid int32) (err error) {
 	return lasterr
 }
 
-func (SNMPparameters *SNMPv3Session) sendV3REPORT(requestid int32, ReportType []int) (err error) {
+func (SNMPparameters *SNMPv3Session) sendV3REPORT(conn net.PacketConn, dstAddr net.Addr, requestid int32, ReportType []int) (err error) {
 	var lasterr error
 	Tmms := time.Duration(SNMPparameters.SNMPparams.TimeoutBtwRepeat) * time.Millisecond
-	Ds := net.Dialer{Timeout: Tmms}
-	//DialAddress := fmt.Sprintf("%s:%d", SNMPparameters.IPaddress, SNMPparameters.Port)
-	DialAddress := net.JoinHostPort(SNMPparameters.IPaddress, fmt.Sprintf("%d", SNMPparameters.Port))
-	conn, dialerr := Ds.Dial("udp", DialAddress)
-	if dialerr != nil {
-		return dialerr
-	}
-	defer func() {
-		cerrc := conn.Close()
-		if cerrc != nil && lasterr == nil {
-			err = cerrc
+	/*
+		Ds := net.Dialer{Timeout: Tmms}
+		//DialAddress := fmt.Sprintf("%s:%d", SNMPparameters.IPaddress, SNMPparameters.Port)
+		DialAddress := net.JoinHostPort(SNMPparameters.IPaddress, fmt.Sprintf("%d", SNMPparameters.Port))
+		conn, dialerr := Ds.Dial("udp", DialAddress)
+		if dialerr != nil {
+			return dialerr
 		}
-	}()
+		defer func() {
+			cerrc := conn.Close()
+			if cerrc != nil && lasterr == nil {
+				err = cerrc
+			}
+		}()
+
+	*/
 
 	OidVarConverted := []SNMP_Packet_V2_VarBind{{internaluseOID_SysUpTime, ASNber.NullRawValue}}
 
@@ -987,7 +993,7 @@ func (SNMPparameters *SNMPv3Session) sendV3REPORT(requestid int32, ReportType []
 	if lasterr != nil {
 		return lasterr
 	}
-	writedn, lasterr := conn.Write(MS)
+	writedn, lasterr := conn.WriteTo(MS, dstAddr)
 	if lasterr != nil {
 		return lasterr
 	}

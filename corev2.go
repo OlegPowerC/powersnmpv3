@@ -413,7 +413,7 @@ func (SNMPparameters *SNMPv3Session) sendSnmpv2GetRequestPrototype(oidValue []SN
 				//Ошибок чтения нет
 				//Пакет получен, разберем его
 				var parcerror error
-				SNMPpackerv2_FP, parcerror = receiverV2parser(SNMPparameters, p[:rlen], true, LocalRequestId)
+				SNMPpackerv2_FP, parcerror = SNMPparameters.receiverV2parser(p[:rlen], true, LocalRequestId)
 				if parcerror != nil {
 					if errors.As(parcerror, &recerr) {
 						if recerr.ErrorStatusCode == PARCE_ERR_WRONGMSGID || recerr.ErrorStatusCode == PARCE_ERR_WRONGREQID {
@@ -461,23 +461,30 @@ func (SNMPparameters *SNMPv3Session) sendSnmpv2GetRequestPrototype(oidValue []SN
 // Matches request ID for correlation. Single-shot UDP dial+send for trap/inform ACK.
 //
 // For SNMPv2-INFORM reliability (RFC 1905) - agent expects RESPONSE PDU.
-func (SNMPparameters *SNMPv3Session) sendV2ACK(requestid int32) (err error) {
+func (SNMPparameters *SNMPv3Session) sendV2ACK(conn net.PacketConn, dstAddr net.Addr, requestid int32) (err error) {
 	var lasterr error
 	Tmms := time.Duration(SNMPparameters.SNMPparams.TimeoutBtwRepeat) * time.Millisecond
-	Ds := net.Dialer{Timeout: Tmms}
-	//DialAddress := fmt.Sprintf("%s:%d", SNMPparameters.IPaddress, SNMPparameters.Port)
-	DialAddress := net.JoinHostPort(SNMPparameters.IPaddress, fmt.Sprintf("%d", SNMPparameters.Port))
+	/*
+		Ds := net.Dialer{Timeout: Tmms}
+			//DialAddress := fmt.Sprintf("%s:%d", SNMPparameters.IPaddress, SNMPparameters.Port)
+			DialAddress := net.JoinHostPort(SNMPparameters.IPaddress, fmt.Sprintf("%d", SNMPparameters.Port))
 
-	conn, dialerr := Ds.Dial("udp", DialAddress)
-	if dialerr != nil {
-		return dialerr
+			conn, dialerr := Ds.Dial("udp", DialAddress)
+			if dialerr != nil {
+				return dialerr
+			}
+			defer func() {
+				cerrc := conn.Close()
+				if cerrc != nil && lasterr == nil {
+					err = cerrc
+				}
+			}()
+	*/
+
+	tmerr := conn.SetWriteDeadline(time.Now().Add(Tmms))
+	if tmerr != nil {
+		return tmerr
 	}
-	defer func() {
-		cerrc := conn.Close()
-		if cerrc != nil && lasterr == nil {
-			err = cerrc
-		}
-	}()
 
 	Oid := []int{1, 3, 6, 1, 2, 1, 1, 3, 0}
 	OidVarConverted := []SNMP_Packet_V2_VarBind{{Oid, ASNber.NullRawValue}}
@@ -490,7 +497,7 @@ func (SNMPparameters *SNMPv3Session) sendV2ACK(requestid int32) (err error) {
 	if lasterr != nil {
 		return lasterr
 	}
-	writedn, lasterr := conn.Write(MS)
+	writedn, lasterr := conn.WriteTo(MS, dstAddr)
 	if lasterr != nil {
 		return lasterr
 	}

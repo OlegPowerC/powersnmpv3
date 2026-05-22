@@ -127,7 +127,14 @@ type SNMP_UnknownVersionPacket struct {
 type SNMPv3_Packet struct {
 	Version          int
 	GlobalData       ASNber.RawValue
-	SecuritySettings []byte //asn1.RawValue
+	SecuritySettings []byte
+	PtData           ASNber.RawValue
+}
+
+type SNMPv3_DhPacket struct {
+	Version          int
+	GlobalData       SNMPv3_GlobalData
+	SecuritySettings SNMPv3_SecSeq
 	PtData           ASNber.RawValue
 }
 
