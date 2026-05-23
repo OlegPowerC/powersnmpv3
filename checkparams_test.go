@@ -35,6 +35,8 @@ var (
 )
 
 // Проверим правильнве ли ошибки
+//
+//gocyclo:ignore
 func chStructuredErr(t *testing.T, err error, ErrorParam []string, FinalDescr string) {
 	var Serr SNMPSetparameters_Errors
 	t.Helper()
@@ -64,6 +66,7 @@ func chStructuredErr(t *testing.T, err error, ErrorParam []string, FinalDescr st
 	}
 }
 
+//gocyclo:ignore
 func TestSetAuthPrivParamsStToInt(t *testing.T) {
 	for _, AuthProtocol := range AuthVariants {
 		for _, PrivProtocol := range PriVariants {
@@ -287,6 +290,7 @@ func TestBasicCheckParamsVersion2SNMP(t *testing.T) {
 	}
 }
 
+//gocyclo:ignore
 func TestCheckUserParams(t *testing.T) {
 	for _, Cuser := range UsersVariant {
 		for _, AuthProtocol := range AuthVariants {

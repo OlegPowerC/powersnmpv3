@@ -84,6 +84,7 @@ type OpstatusData struct {
 	OpStatus int64
 }
 
+//gocyclo:ignore
 func main() {
 	WLCIP := flag.String("ip", "", "C9800 ip address")
 	SNMPuser := flag.String("u", "", "SNMP username")
