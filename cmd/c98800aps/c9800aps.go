@@ -138,14 +138,14 @@ func main() {
 		}
 
 		//Перебираем данные
-		for _, cap := range APlist {
-			if len(cap.RSnmpOID) == (len(APNamesOIDint) + 6) {
+		for _, cuap := range APlist {
+			if len(cuap.RSnmpOID) == (len(APNamesOIDint) + 6) {
 				//Нам нужны 6 последних байт из возвращенного OID'а
-				APMAC := cap.RSnmpOID[len(APNamesOIDint):]
+				APMAC := cuap.RSnmpOID[len(APNamesOIDint):]
 				//Переводим MAC в строку
 				MACst := fmt.Sprintf("%d.%d.%d.%d.%d.%d", APMAC[0], APMAC[1], APMAC[2], APMAC[3], APMAC[4], APMAC[5])
 				//И имя точки (значение, которое мы сконвертируем в строку)
-				APName := PowerSNMP.Convert_Variable_To_String(cap.RSnmpVar)
+				APName := PowerSNMP.Convert_Variable_To_String(cuap.RSnmpVar)
 				//Добавляем точку в список
 				Capn := AP{APName: APName, APMAC: MACst}
 				devicesipstn.Devices = append(devicesipstn.Devices, Capn)
