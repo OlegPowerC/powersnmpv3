@@ -290,6 +290,8 @@ func TestBasicCheckParamsVersion2SNMP(t *testing.T) {
 	}
 }
 
+// Перебор всех вариантов
+//
 //gocyclo:ignore
 func TestCheckUserParams(t *testing.T) {
 	for _, Cuser := range UsersVariant {
