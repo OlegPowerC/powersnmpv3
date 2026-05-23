@@ -103,18 +103,18 @@ func main() {
 	var devicesipstn Devices
 
 	//Создаем описание устройства
-	var С9800 PowerSNMP.NetworkDevice
-	С9800.IPaddress = *WLCIP
-	С9800.Port = 161
-	С9800.SNMPparameters.Username = *SNMPuser
-	С9800.SNMPparameters.SNMPversion = 3
-	С9800.SNMPparameters.AuthProtocol = *SNMAuth
-	С9800.SNMPparameters.PrivProtocol = *SNMPriv
-	С9800.SNMPparameters.AuthKey = *SNMAuthPpass
-	С9800.SNMPparameters.PrivKey = *SNMPrivPpass
+	var C9800 PowerSNMP.NetworkDevice
+	C9800.IPaddress = *WLCIP
+	C9800.Port = 161
+	C9800.SNMPparameters.Username = *SNMPuser
+	C9800.SNMPparameters.SNMPversion = 3
+	C9800.SNMPparameters.AuthProtocol = *SNMAuth
+	C9800.SNMPparameters.PrivProtocol = *SNMPriv
+	C9800.SNMPparameters.AuthKey = *SNMAuthPpass
+	C9800.SNMPparameters.PrivKey = *SNMPrivPpass
 
 	//Инициализируем SNTP сессию
-	SNMPc9800dev, SNMPc9800Err := PowerSNMP.SNMP_Init(С9800)
+	SNMPc9800dev, SNMPc9800Err := PowerSNMP.SNMP_Init(C9800)
 	if SNMPc9800Err != nil {
 		ErrorInProgram(SNMPc9800Err)
 	}
@@ -183,15 +183,13 @@ func main() {
 	var APstatoids []PowerSNMP.SNMP_Packet_V2_Decoded_VarBind
 
 	//Теперь перебираем все точки и опрашиваем нужные OID'ы
-	for capindex, cap := range devicesipstn.Devices {
+	for capindex, curap := range devicesipstn.Devices {
 		var MACiData []int
-		MACDt := strings.Split(cap.APMAC, ".")
+		MACDt := strings.Split(curap.APMAC, ".")
 		for _, MBc := range MACDt {
 			Id, Ie := strconv.Atoi(MBc)
 			if Ie != nil {
-				if Ie != nil {
-					ErrorInProgram(Ie)
-				}
+				ErrorInProgram(Ie)
 			}
 			MACiData = append(MACiData, Id)
 		}
