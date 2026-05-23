@@ -1,3 +1,5 @@
+//nolint: gocyclo
+
 // PowerSNMPv3 - SNMP library for Go
 // Автор: Волков Олег
 // Author: Volkov Oleg

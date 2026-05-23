@@ -1,5 +1,7 @@
 //go:build checkparams
 
+//nolint: gocyclo
+
 package PowerSNMPv3
 
 import (

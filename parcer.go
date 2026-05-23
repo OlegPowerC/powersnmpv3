@@ -197,28 +197,32 @@ func (SNMPparameters *SNMPv3Session) receiverV3Bparser(udppayload []byte, SNMPv3
 		}
 	}()
 
-	if len(SNMPv3Ppacker.GlobalData.MsgFlag) > 0 && (SNMPv3Ppacker.GlobalData.MsgFlag[0]&(1<<msgFlag_Authenticated_Bit) != 0) {
-		if !checkmsg_req_id {
-			if cpboottimeeid {
-				//Берем EngineID из принятых данных а так же Boots и Time
-				SNMPparameters.SNMPparams.EngineID = SNMPv3Ppacker.SecuritySettings.AuthEng
-			}
-
-			if SNMPparameters.SNMPparams.SecurityLevel > SECLEVEL_NOAUTH_NOPRIV {
-				Lkey := makeLocalizedKey(SNMPparameters.SNMPparams.AuthKey, SNMPparameters.SNMPparams.EngineID, SNMPparameters.SNMPparams.AuthProtocol)
-				SNMPparameters.SNMPparams.LocalizedKeyAuth = Lkey
-				atomic.OrUint32(&SNMPparameters.SNMPparams.DataFlag, 1<<msgFlag_Authenticated_Bit)
-			}
+	if len(SNMPv3Ppacker.GlobalData.MsgFlag) > 0 {
+		if cpboottimeeid {
+			//Берем EngineID из принятых данных, а так же Boots и Time
+			SNMPparameters.SNMPparams.EngineID = SNMPv3Ppacker.SecuritySettings.AuthEng
 		}
 
-		digver := false
-		digver, umerr = verifyDigestRAW(udppayload, SNMPv3Ppacker.SecuritySettings.AuthParams, SNMPparameters.SNMPparams.LocalizedKeyAuth, SNMPparameters.SNMPparams.AuthProtocol)
-		if umerr != nil {
-			return ReturnSNMPpacker, umerr
-		}
-		if !digver {
-			umerr = errors.New("authentication Error")
-			return ReturnSNMPpacker, umerr
+		//Если сообщение аутентифицировано
+		if SNMPv3Ppacker.GlobalData.MsgFlag[0]&(1<<msgFlag_Authenticated_Bit) != 0 {
+			if !checkmsg_req_id {
+				//если это прием TRAP/INFORM то локализуем ключ
+				if SNMPparameters.SNMPparams.SecurityLevel > SECLEVEL_NOAUTH_NOPRIV {
+					Lkey := makeLocalizedKey(SNMPparameters.SNMPparams.AuthKey, SNMPparameters.SNMPparams.EngineID, SNMPparameters.SNMPparams.AuthProtocol)
+					SNMPparameters.SNMPparams.LocalizedKeyAuth = Lkey
+					atomic.OrUint32(&SNMPparameters.SNMPparams.DataFlag, 1<<msgFlag_Authenticated_Bit)
+				}
+			}
+
+			digver := false
+			digver, umerr = verifyDigestRAW(udppayload, SNMPv3Ppacker.SecuritySettings.AuthParams, SNMPparameters.SNMPparams.LocalizedKeyAuth, SNMPparameters.SNMPparams.AuthProtocol)
+			if umerr != nil {
+				return ReturnSNMPpacker, umerr
+			}
+			if !digver {
+				umerr = errors.New("authentication Error")
+				return ReturnSNMPpacker, umerr
+			}
 		}
 	}
 

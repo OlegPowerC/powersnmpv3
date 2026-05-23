@@ -242,7 +242,7 @@ func ParseTrapWithCredentials(conn net.PacketConn, addr net.Addr,
 			SNMPparameters.SNMPparams.RBoots = LocalEBT.RBoots.Load()
 			SNMPparameters.SNMPparams.RTime = LocalEBT.RTime.Load()
 			umerr = SNMPparameters.sendV3REPORT(conn, addr, ReturnSNMPpacket.RequestID, OID_UnknownEngineId)
-			return Version, MsgType, ReturnSNMPpacket, nil
+			return Version, MsgType, ReturnSNMPpacket, umerr
 		}
 	}
 

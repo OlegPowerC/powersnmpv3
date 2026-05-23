@@ -1297,9 +1297,8 @@ func CheckSNMPv3StringParams(authproto string, authkey string, privproto string,
 	var reterr SNMPSetparameters_Errors
 	AuthProtoString := strings.ToLower(strings.TrimSpace(authproto))
 	PrivProtoString := strings.ToLower(strings.TrimSpace(privproto))
-	//Проверяем указан ли хоть какой то протокол auth
+	//Проверяем указан ли хоть какой-то протокол auth
 	AuthNone := true
-	PrivNone := true
 	seclevel := SECLEVEL_NOAUTH_NOPRIV
 	authint := AUTH_PROTOCOL_NONE
 	privint := PRIV_PROTOCOL_NONE
@@ -1323,8 +1322,7 @@ func CheckSNMPv3StringParams(authproto string, authkey string, privproto string,
 	}
 	if len(PrivProtoString) > 0 {
 		if PrivP, Pok := privhProtocols[PrivProtoString]; Pok {
-			PrivNone = PrivP.non
-			if !PrivNone {
+			if !PrivP.non {
 				kinv := false
 				if len(privkey) < SNMP_AUTH_PRIV_KEY_MINLEN {
 					kinv = true
