@@ -10,7 +10,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"math/rand"
 	"sync/atomic"
 
 	ASNber "github.com/OlegPowerC/asn1modsnmp"
@@ -246,8 +245,18 @@ func (SNMPparameters *SNMPv3Session) receiverV3Bparser(udppayload []byte, SNMPv3
 					Lkey = expandPrivKey(Lkey, SNMPparameters.SNMPparams.PrivProtocol, SNMPparameters.SNMPparams.AuthProtocol, SNMPparameters.SNMPparams.EngineID)
 				}
 				SNMPparameters.SNMPparams.LocalizedKeyPriv = Lkey
-				SNMPparameters.SNMPparams.PrivParameter = rand.Uint64()
-				SNMPparameters.SNMPparams.PrivParameterDes = rand.Uint32()
+
+				Rpp, RppErr := randUint64()
+				if RppErr != nil {
+					return ReturnSNMPpacker, RppErr
+				}
+				RppDes, RppErrDes := randUint32()
+				if RppErrDes != nil {
+					return ReturnSNMPpacker, RppErrDes
+				}
+
+				SNMPparameters.SNMPparams.PrivParameter = Rpp
+				SNMPparameters.SNMPparams.PrivParameterDes = RppDes
 				atomic.OrUint32(&SNMPparameters.SNMPparams.DataFlag, 1<<msgFlag_Encrypted_Bit)
 			}
 		}

@@ -12,6 +12,7 @@ import (
 	"crypto/sha1"
 	"crypto/sha256"
 	"crypto/sha512"
+	"crypto/subtle"
 	"errors"
 	"hash"
 
@@ -364,7 +365,11 @@ func verifyDigestRAW(SNMPv3Packet []byte, digest []byte, LocalizedKey []byte, Au
 	}
 
 	DigestCalc := makeDigest(DataCopy, LocalizedKey, AuthProtocol)
-	if bytes.Equal(DigestCalc, digest) {
+
+	if len(DigestCalc) != len(digest) {
+		return false, nil
+	}
+	if subtle.ConstantTimeCompare(DigestCalc, digest) == 1 {
 		return true, nil
 	}
 	return false, nil

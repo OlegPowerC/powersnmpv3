@@ -1506,6 +1506,15 @@ go test -v -tags=integration -args -h  2001:db8:1::120 -u snmpuser -a sha -A tes
 PASS
 ok      github.com/OlegPowerC/powersnmpv3       2.273s
 ```
+### Настройка коммутатора для выполнения тестов, на примере Cisco Catalyst
+
+```
+snmp-server view SNMPv3-V iso included
+snmp-server group SNMPv3-G v3 priv read SNMPv3-V write SNMPv3-V
+snmp-server community private123 RW
+
+snmp-server user snmpuser SNMPv3-G v3 auth sha auth12345 priv aes 128 priv12345
+```
 
 ---
 

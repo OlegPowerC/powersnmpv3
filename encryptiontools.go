@@ -11,6 +11,8 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/des"
+	"crypto/rand"
+	"encoding/binary"
 	"errors"
 )
 
@@ -43,6 +45,24 @@ func fPKCS5Padding(src []byte, blockSize int, snmp bool) (data []byte, err error
 	padding := blockSize - len(src)%blockSize
 	padtext := bytes.Repeat([]byte{byte(padding)}, padding)
 	return append(src, padtext...), nil
+}
+
+func randUint64() (uint64, error) {
+	Buff := make([]byte, 8)
+	_, rer := rand.Read(Buff)
+	if rer != nil {
+		return 0, rer
+	}
+	return binary.BigEndian.Uint64(Buff), nil
+}
+
+func randUint32() (uint32, error) {
+	Buff := make([]byte, 4)
+	_, rer := rand.Read(Buff)
+	if rer != nil {
+		return 0, rer
+	}
+	return binary.BigEndian.Uint32(Buff), nil
 }
 
 // fPKCS5UnPadding removes PKCS#5/PKCS#7 padding from SNMPv3 privacy cipher blocks.

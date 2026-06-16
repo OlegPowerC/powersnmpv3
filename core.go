@@ -166,8 +166,16 @@ func (SNMPparameters *SNMPv3Session) embeddedDiscovery(rts SNMPv3_DecodePacket) 
 		}
 
 		SNMPparameters.SNMPparams.LocalizedKeyPriv = Lkey
-		SNMPparameters.SNMPparams.PrivParameter = rand.Uint64()
-		SNMPparameters.SNMPparams.PrivParameterDes = rand.Uint32()
+		Rpp, RppErr := randUint64()
+		if RppErr != nil {
+			return RppErr
+		}
+		RppDes, RppErrDes := randUint32()
+		if RppErrDes != nil {
+			return RppErrDes
+		}
+		SNMPparameters.SNMPparams.PrivParameter = Rpp
+		SNMPparameters.SNMPparams.PrivParameterDes = RppDes
 		atomic.OrUint32(&SNMPparameters.SNMPparams.DataFlag, 1<<msgFlag_Encrypted_Bit)
 	}
 
