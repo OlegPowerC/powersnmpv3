@@ -228,8 +228,6 @@ func ParseTrapWithCredentials(conn net.PacketConn, addr net.Addr,
 
 	MsgType = MsgPr.MessageType
 	ReturnSNMPpacket = MsgPr.V3PDU.V2VarBind
-	//SNMPparameters.SNMPparams.MessageId = MsgPr.SecuritySettings.
-	//SNMPparams.MessageId
 
 	if MsgType == INFORM_MESSAGE {
 		//Надо отправить ACK

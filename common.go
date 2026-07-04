@@ -60,6 +60,27 @@ func InSubTreeCheck(OidMain []int, OidCurrent []int) bool {
 	return true
 }
 
+func CheckOidIncreased(Oid []int, OidCurrent []int) bool {
+	chsteplen := len(Oid)
+	if len(OidCurrent) < len(Oid) {
+		chsteplen = len(OidCurrent)
+	}
+
+	for OidElementIndex := 0; OidElementIndex < chsteplen; OidElementIndex++ {
+		if OidCurrent[OidElementIndex] > Oid[OidElementIndex] {
+			return true
+		}
+		if OidCurrent[OidElementIndex] < Oid[OidElementIndex] {
+			return false
+		}
+
+	}
+	if len(OidCurrent) <= len(Oid) {
+		return false
+	}
+	return true
+}
+
 func (e SNMPwrongReqID_MsgId_Errors) Error() string {
 	switch e.ErrorStatusCode {
 	case PARCE_ERR_WRONGMSGID:
@@ -87,9 +108,13 @@ func (e SNMPSetparameters_Errors) Error() string {
 
 // Print partial error for man
 func (e SNMPne_Errors) Error() string {
+	ptofatal := "partial"
+	if e.AllOIDsFail == true && e.NoFirst == false {
+		ptofatal = "fatal"
+	}
 	FailedOids := make([]string, len(e.Failedoids))
 	for i, v := range e.Failedoids {
-		FailedOids[i] = fmt.Sprintf("partial, %s (status=%d): %s", SNMPPDUErrorIntToText(v.Error_id), v.Error_id, Convert_OID_IntArrayToString_RAW(v.Failedoid))
+		FailedOids[i] = fmt.Sprintf("%s, %s (status=%d): %s", ptofatal, SNMPVarbindErrorIntToText(v.Error_id), v.Error_id, Convert_OID_IntArrayToString_RAW(v.Failedoid))
 	}
 	CompleteFailedOidStr := strings.TrimSuffix(strings.Join(FailedOids, ","), ",")
 	return fmt.Sprintf("%s", CompleteFailedOidStr)
@@ -119,6 +144,10 @@ func (e SNMPfe_Errors) Error() string {
 //	if snmpErr.IsFatal { log.Fatal("SNMP fatal error") }
 //	for _, oidErr := range snmpErr.Oids { retry(oidErr.Failedoid) }
 func ParseError(err error) (SNMPerr SNMPud_Errors, CommonError error) {
+	return internalParseError(err, true)
+}
+
+func internalParseError(err error, CheckAllOidsFails bool) (SNMPerr SNMPud_Errors, CommonError error) {
 	var partialerr SNMPne_Errors
 	var fatalerr SNMPfe_Errors
 	if errors.As(err, &partialerr) {
@@ -127,10 +156,14 @@ func ParseError(err error) (SNMPerr SNMPud_Errors, CommonError error) {
 			DUerOids[oi] = SNMPud_OidError{
 				Failedoid:        oid.Failedoid,
 				Error_id:         int32(oid.Error_id),
-				ErrorDescription: fmt.Sprintf("%s (status=%d): %s", Convert_OID_IntArrayToString_RAW(oid.Failedoid), oid.Error_id, SNMPPDUErrorIntToText(oid.Error_id)),
+				ErrorDescription: fmt.Sprintf("%s (status=%d): %s", Convert_OID_IntArrayToString_RAW(oid.Failedoid), oid.Error_id, SNMPVarbindErrorIntToText(oid.Error_id)),
 			}
 		}
-		return SNMPud_Errors{IsFatal: partialerr.AllOIDsFail, Oids: DUerOids}, nil
+		isfatal := false
+		if partialerr.AllOIDsFail == true && CheckAllOidsFails == true {
+			isfatal = true
+		}
+		return SNMPud_Errors{IsFatal: isfatal, Oids: DUerOids}, nil
 	}
 	if errors.As(err, &fatalerr) {
 		DUerOids := make([]SNMPud_OidError, 1)
@@ -506,10 +539,9 @@ func SNMP_Init(Ndev NetworkDevice) (*SNMPv3Session, error) {
 	}
 	switch Ndev.SNMPparameters.SNMPversion {
 	case 3:
-
-		RetSession, RetError = SNMPv3_Discovery(Ndev)
+		RetSession, RetError = snmpv3_Discovery(Ndev)
 	case 2:
-		RetSession, RetError = SNMPv2_Init(Ndev)
+		RetSession, RetError = snmpv2_Init(Ndev)
 	default:
 		RetError = errors.New("unsupported SNMP version")
 	}
@@ -1078,74 +1110,15 @@ func SNMPErrorIntToText(code int) string {
 	return fmt.Sprintf("error-status: %d", code)
 }
 
-// SNMPPDUErrorIntToText converts ScopedPDU error-status codes to human-readable strings.
-//
-// Converts SNMPv3 ScopedPDU-level errorStatus (RFC3412 §4, RFC3826) to symbolic names.
-// Used by snmpv3 engines for USM/EngineID validation BEFORE reaching VarBind processing.
-//
-// Arguments:
-//
-//	code - ScopedPDU error-status integer (0-31, RFC 3412)
-//
-// Returns:
-//
-//	string - Symbolic name or "pdu error-status: N" fallback
-//
-// ScopedPDU vs VarBind error levels (critical distinction):
-// | Level          | Function Called          | Error Examples                     |
-// |----------------|--------------------------|------------------------------------|
-// | **ScopedPDU**  | SNMPPDUErrorIntToText()  | authNoPriv(17), decryptErr(11)    |
-// | **VarBind**    | SNMPErrorIntToText()     | noSuchName(2), badValue(3)        |
-//
-// SNMPv3 ScopedPDU error flow (Wireshark → godoc):
-//  1. USM processing → authNoPriv(17) / decryptErr(11)
-//  2. EngineID mismatch → reportInconsistentValue(21)
-//  3. ScopedPDU valid → VarBind errors (noSuchName, etc.)
-//
-// Common ScopedPDU errors (RFC3826 §3.1.2):
-// | Code | Name                     | Cause                              |
-// |------|--------------------------|------------------------------------|
-// | 10   | authError               | HMAC-SHA/AES authKey failure      |
-// | 11   | decryptErr              | AES-128/192/256 privKey failure   |
-// | 17   | authNoPriv              | unknown userName                  |
-// | 18   | unknownSecModel         | non-USM securityModel             |
-// | 19   | notInTimeWindow         | EngineBoots/EngineTime mismatch   |
-// | 20   | unsupportedSecLevel     | authPriv vs noAuth mismatch       |
-// | 21   | reportInconsistentValue | EngineID length/type invalid      |
-//
-// Production ParseError() integration:
-//
-//	```go
-//	snmpErr, _ := ParseError(err)
-//	if snmpErr.PDUErrorStatus != 0 {
-//	    fmt.Printf("ScopedPDU: %s\n",
-//	        SNMPPDUErrorIntToText(snmpErr.PDUErrorStatus))
-//	    // "ScopedPDU: authNoPriv" → wrong userName!
-//	} else if snmpErr.ErrorStatus != 0 {
-//	    fmt.Printf("VarBind %s: %s\n",
-//	        Convert_OID_IntArrayToString(snmpErr.Oids),
-//	        SNMPErrorIntToText(snmpErr.ErrorStatus))
-//	    // "VarBind 1.3.6.1.2.1.1.99.0: noSuchName"
-//	}
-//	```
-//
-// Wireshark debugging correlation:
-//   - SNMPv3 Response: errorStatus=17 → SNMPPDUErrorIntToText(17) = "authNoPriv"
-//   - SNMPv3 Response: errorStatus=2, errorIndex=1 → SNMPErrorIntToText(2) = "noSuchName"
-//   - reportInconsistentValue(21) → EngineID format problem
-//
-// Debug checklist (PDU vs VarBind):
-//   - PDU errorStatus=17 → **userName** wrong
-//   - PDU errorStatus=10 → **authKey** wrong
-//   - PDU errorStatus=11 → **privKey** wrong
-//   - PDU errorStatus=0 + VarBind errorStatus=2 → OID doesn't exist
-//
-// Integrates with ParseError() → SNMPpdu_Errors / SNMPfe_Errors structs.
-func SNMPPDUErrorIntToText(code int) string {
+// SNMPVarbindErrorIntToText converts VarBind errors to human-readable strings.
+func SNMPVarbindErrorIntToText(code int) string {
+	if name, ok := SNMPVarBindErrorNames[code]; ok {
+		return name
+	}
 	if name, ok := SNMPErrorNames[code]; ok {
 		return name
 	}
-	return fmt.Sprintf("pdu error-status: %d", code)
+	return fmt.Sprintf("unknown varbind error-status: %d", code)
 }
 
 // CheckUserParams validates SNMP device configuration
@@ -1205,7 +1178,10 @@ func SNMPPDUErrorIntToText(code int) string {
 func CheckUserParams(ndev NetworkDevice) error {
 	var reterr SNMPSetparameters_Errors
 
-	ipa := net.ParseIP(ndev.IPaddress)
+	ipa, ipaerr := net.ResolveIPAddr("ip", ndev.IPaddress)
+	if ipaerr != nil {
+		return ipaerr
+	}
 
 	if ipa == nil {
 		return fmt.Errorf("wrong ip address, error: %v", ipa)

@@ -41,3 +41,4 @@ This provides better error semantics: complete failure = fatal error.
 ### Improvements
 - Removed byte manipulation hack for PDU parsing
 - Clean ASN.1 parsing using standard mechanisms
+### hide Discovery function

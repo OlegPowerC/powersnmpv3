@@ -91,7 +91,9 @@ var SNMPErrorNames = map[int]string{
 	sNMP_ErrUnexpectedInternalSNMPDriverError: "UnexpectedInternalSNMPDriverError",
 	sNMP_ErrNoHandlerForPDU:                   "NoHandlerForPDU",
 	sNMP_ErrErrorAddingUserCredentials:        "ErrorAddingUserCredentials",
+}
 
+var SNMPVarBindErrorNames = map[int]string{
 	//Error in VarBind
 	tagandclassERR_noSuchObject:   "NoSuchObject",
 	tagandclassERR_noSuchInstance: "NoSuchInstance",
@@ -149,6 +151,7 @@ type SNMPv3_SecSeq struct {
 
 type SNMPne_Errors struct {
 	AllOIDsFail bool
+	NoFirst     bool
 	Failedoids  []PowerSNMPv3_Errors_FailedOids_Error
 }
 

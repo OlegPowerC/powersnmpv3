@@ -11,10 +11,13 @@
 package PowerSNMPv3
 
 import (
+	"context"
 	"flag"
 	"os"
 	"slices"
+	"sync/atomic"
 	"testing"
+	"time"
 )
 
 var (
@@ -45,7 +48,7 @@ func TestSNMPv3Session_SNMP_Get_Set(t *testing.T) {
 	Nhost.SNMPparameters.PrivProtocol = *SNMPprivProtocol
 	Nhost.SNMPparameters.PrivKey = *SNMPprivPassword
 	Nhost.SNMPparameters.Community = *SNMPcommunity
-	Nhost.SNMPparameters.TimeoutBtwRepeat = 500
+	Nhost.SNMPparameters.TimeoutBtwRepeat = 1000
 	Nhost.SNMPparameters.RetryCount = 3
 	Ssess, SsessError := SNMP_Init(Nhost)
 	if SsessError != nil {
@@ -155,6 +158,9 @@ func TestSNMPv3Session_SNMP_Get_Set(t *testing.T) {
 	t.Log("-------- End --------")
 
 	t.Log("-------- Get multiple oids V3 --------")
+	t.Log("-------- Set Boots/Time to invalid values ---------")
+	Ssess.SNMPparams.RBoots = 280
+	Ssess.SNMPparams.RTime = 280
 
 	Mgv3, Mgerrv3 := Ssess.SNMP_GetMulti(GetOids)
 	for _, Mgvv3 := range Mgv3 {
@@ -184,6 +190,42 @@ func TestSNMPv3Session_SNMP_Get_Set(t *testing.T) {
 	t.Log("-------- End --------")
 
 	t.Log("-------- Get multiple oids V3, All oids is invalid --------")
+	t.Log("-------- Set EngineID to invalid values ---------")
+
+	Ssess.SNMPparams.EngineID = []byte{0x00, 0x00, 0x00, 0x00, 0x01, 0x01, 0x00, 0x00}
+	// Подставим неверный EngineID в процессе работы, нужно заново локлизовать ключи иначе не расшифровать в WireShark
+
+	if Ssess.SNMPparams.SecurityLevel > SECLEVEL_NOAUTH_NOPRIV {
+		Lkey := makeLocalizedKey(Ssess.SNMPparams.AuthKey, Ssess.SNMPparams.EngineID, Ssess.SNMPparams.AuthProtocol)
+		Ssess.SNMPparams.LocalizedKeyAuth = Lkey
+		atomic.OrUint32(&Ssess.SNMPparams.DataFlag, 1<<msgFlag_Authenticated_Bit)
+	}
+
+	if Ssess.SNMPparams.SecurityLevel == SECLEVEL_AUTHPRIV {
+		Lkey := makeLocalizedKey(Ssess.SNMPparams.PrivKey, Ssess.SNMPparams.EngineID, Ssess.SNMPparams.AuthProtocol)
+		switch Ssess.SNMPparams.PrivProtocol {
+		case PRIV_PROTOCOL_AES128:
+			if len(Lkey) > 16 {
+				Lkey = Lkey[:16]
+			} // Только AES128!
+		case PRIV_PROTOCOL_AES192, PRIV_PROTOCOL_AES256, PRIV_PROTOCOL_AES192A, PRIV_PROTOCOL_AES256A:
+			Lkey = expandPrivKey(Lkey, Ssess.SNMPparams.PrivProtocol, Ssess.SNMPparams.AuthProtocol, Ssess.SNMPparams.EngineID)
+		}
+		Ssess.SNMPparams.LocalizedKeyPriv = Lkey
+
+		Rpp, RppErr := randUint64()
+		if RppErr != nil {
+			t.Fatal(RppErr)
+		}
+		RppDes, RppErrDes := randUint32()
+		if RppErrDes != nil {
+			t.Fatal(RppErrDes)
+		}
+
+		Ssess.SNMPparams.PrivParameter = Rpp
+		Ssess.SNMPparams.PrivParameterDes = RppDes
+		atomic.OrUint32(&Ssess.SNMPparams.DataFlag, 1<<msgFlag_Encrypted_Bit)
+	}
 
 	MgvAlInv, MgerrvAllInv := Ssess.SNMP_GetMulti(GetOidsAllInvalid)
 	for _, MgvvAlInv := range MgvAlInv {
@@ -400,4 +442,47 @@ func TestSNMPv3Session_SNMP_Get_Walk(t *testing.T) {
 		t.Errorf("SNMP v3  Error in Close: %s", Close3Errv2.Error())
 	}
 	t.Log("-------- End --------")
+}
+
+func TestSNMPv3Session_SNMP_WalkChain(t *testing.T) {
+	var Nhost NetworkDevice
+	Nhost.IPaddress = *Host
+	Nhost.Port = 161
+	Nhost.SNMPparameters.SNMPversion = 3
+	Nhost.SNMPparameters.Username = *SNMPuser
+	Nhost.SNMPparameters.AuthProtocol = *SNMPauthProtocol
+	Nhost.SNMPparameters.AuthKey = *SNMPauthPassword
+	Nhost.SNMPparameters.PrivProtocol = *SNMPprivProtocol
+	Nhost.SNMPparameters.PrivKey = *SNMPprivPassword
+	Nhost.SNMPparameters.Community = *SNMPcommunity
+	Nhost.SNMPparameters.TimeoutBtwRepeat = 500
+	Nhost.SNMPparameters.MaxMsgSize = uint16(*MaxMsgSize)
+	Nhost.SNMPparameters.RetryCount = 3
+	Ssess, SsessError := SNMP_Init(Nhost)
+	if SsessError != nil {
+		t.Fatalf("Error in SNMPInit: %v", SsessError.Error())
+	}
+	if Ssess == nil {
+		t.Fatal("Error in SNMPInit")
+	}
+	t.Log("-------- WalkChain from OID 1.3.6.1.2.1.2.2.1.2 V3 --------")
+	StrOidW := "1.3.6.1.2.1.2.2.1.2"
+	IoidW, _ := ParseOID(StrOidW)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
+	defer cancel()
+	ChIn := make(chan ChanDataWErr, 3000)
+
+	go Ssess.SNMP_BulkWalk_WChan(ctx, IoidW, ChIn)
+	ResultNumber := 0
+	for gdata := range ChIn {
+		if gdata.Error != nil {
+			t.Fatal(gdata.Error)
+		}
+		ResultNumber++
+		if gdata.ValidData {
+			t.Log(Convert_OID_IntArrayToString_RAW(gdata.Data.RSnmpOID), "=", Convert_Variable_To_String(gdata.Data.RSnmpVar), ":", Convert_ClassTag_to_String(gdata.Data.RSnmpVar))
+		}
+	}
+	t.Log("Results: ", ResultNumber)
 }

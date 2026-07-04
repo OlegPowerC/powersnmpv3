@@ -114,7 +114,7 @@ func fPKCS5UnPadding(src []byte, blockSize int, snmp bool) (data []byte, err err
 	return src[:(len(src) - unpadding)], nil
 }
 
-// encryptAESCFB performs SNMPv3 AES-CFB128 encryption (RFC 3826).
+// encryptAESCFB performs SNMPv3 AES-CFB encryption
 //
 // **SUPPORTS**: AES128/192/256 (16/24/32-byte keys)
 //
@@ -126,7 +126,7 @@ func fPKCS5UnPadding(src []byte, blockSize int, snmp bool) (data []byte, err err
 //
 // Algorithm:
 //
-//	AES-CFB128 mode (8-byte segments) for all key sizes
+//	AES-CFB mode for all key sizes
 //	XORKeyStream encryption (no padding, stream cipher semantics)
 //
 // Returns:
@@ -153,7 +153,7 @@ func encryptAESCFB(src, key, iv []byte) (EncryptedData []byte, err error) {
 	return dst, nil
 }
 
-// decryptAESCFB performs SNMPv3 AES-CFB128 decryption (RFC 3826).
+// decryptAESCFB performs SNMPv3 AES-CFB decryption
 //
 // **SUPPORTS**: AES128/192/256 (16/24/32-byte keys)
 //
@@ -165,7 +165,7 @@ func encryptAESCFB(src, key, iv []byte) (EncryptedData []byte, err error) {
 //
 // Algorithm:
 //
-//	AES-CFB128 decryption (8-byte segments) for all key sizes
+//	AES-CFB decryption for all key sizes
 //	XORKeyStream decryption (stream cipher semantics, no padding removal)
 //
 // Returns:

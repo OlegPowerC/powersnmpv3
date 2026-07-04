@@ -14,7 +14,6 @@ import (
 	"fmt"
 	"math/rand"
 	"net"
-	"slices"
 	"sync/atomic"
 	"time"
 
@@ -58,7 +57,11 @@ func (SNMPparameters *SNMPv3Session) reportHandle(rts SNMPv3_DecodePacket, OidVa
 		return ReturnVal, errors.New("empty report")
 	}
 	if rts.V3PDU.V2VarBind.VarBinds[0].RSnmpOID.Equal(OID_NoInTime) {
-
+		if SNMPparameters.SNMPparams.AuthProtocol > 0 {
+			if len(rts.GlobalData.MsgFlag) == 0 || rts.GlobalData.MsgFlag[0]&(1<<msgFlag_Authenticated_Bit) == 0 {
+				return ReturnVal, errors.New("received notInTimeWindow report without auth but expected with auth")
+			}
+		}
 		stimeerr := SNMPparameters.embeddedNoInTime(rts)
 		if stimeerr != nil {
 			return ReturnVal, stimeerr
@@ -190,25 +193,17 @@ func (SNMPparameters *SNMPv3Session) embeddedDiscovery(rts SNMPv3_DecodePacket) 
 	return nil
 }
 
-// SNMPv3_Discovery initializes SNMPv3 session with automatic EngineID discovery.
+// snmpv3_Discovery initializes SNMPv3 session with automatic EngineID discovery.
 //
 // Sends discovery GET request to `1.3.6.1.2.1.1.1.0` expecting "unknownEngineID" error.
 // Extracts EngineID, Boots, Time from REPORT response and localizes Auth/Priv keys.
-//
-// Example:
-//
-//	device := PowerSNMP.NetworkDevice{
-//	    IPaddress: "192.168.5.252",
-//	    SNMPparameters: PowerSNMP.SNMPparameters{Username: "SNMPv3User", AuthProtocol: "SHA", ...},
-//	}
-//	session, err := PowerSNMP.SNMPv3_Discovery(device)
 //
 // Automatically handles:
 //   - EngineID discovery from REPORT (1.3.6.1.6.3.15.1.1.4.0)
 //   - Key localization (makeLocalizedKey/expandPrivKey)
 //   - AES128/192/256C protocols
 //   - Parameter validation (defaults: Retry=3, Timeout=300ms, MaxRep=25)
-func SNMPv3_Discovery(Ndev NetworkDevice) (SNMPsession *SNMPv3Session, err error) {
+func snmpv3_Discovery(Ndev NetworkDevice) (SNMPsession *SNMPv3Session, err error) {
 	var ReturnError error
 	Session := &SNMPv3Session{}
 	Session.Debuglevel = Ndev.DebugLevel
@@ -498,8 +493,6 @@ func (SNMPparameters *SNMPv3Session) makeMessage(oidValue []SNMP_Packet_V2_VarBi
 //   - WrongMsgID/WrongReqID error recovery
 //   - Full packet send/receive cycle
 func (SNMPparameters *SNMPv3Session) sendSnmpv3GetRequestPrototype(oidValue []SNMP_Packet_V2_VarBind, ReqType int, nonRepeaters int32, maxRepetitions int32) (SNMPretPacket SNMPv3_DecodePacket, err error) {
-	SNMPparameters.cmux.Lock()
-	defer SNMPparameters.cmux.Unlock()
 	var ReturnSNMPpacker SNMPv3_DecodePacket
 	var SNMPv3Packet []byte
 	var errread error
@@ -606,6 +599,8 @@ func (SNMPparameters *SNMPv3Session) sendSnmpv3GetRequestPrototype(oidValue []SN
 //	data, err := session.snmpv3_GetSet(oid, PowerSNMP.SNMPv2_REQUEST_GETBULK,SNMPvbNullValue)
 //	data, err := session.snmpv3_GetSet(setOID, PowerSNMP.SNMPv2_REQUEST_SET, value)
 func (SNMPparameters *SNMPv3Session) snmpv3_GetSet(oidValue []SNMP_Packet_V2_Decoded_VarBind, Request_Type int) (ReturnValue []SNMP_Packet_V2_Decoded_VarBind, err error) {
+	SNMPparameters.cmux.Lock()
+	defer SNMPparameters.cmux.Unlock()
 	atomic.AddInt32(&SNMPparameters.SNMPparams.MessageId, 1)
 	atomic.AddInt32(&SNMPparameters.SNMPparams.MessageIDv2, 1)
 	var ReturnVal []SNMP_Packet_V2_Decoded_VarBind
@@ -711,42 +706,64 @@ func (SNMPparameters *SNMPv3Session) snmpv3_GetSet(oidValue []SNMP_Packet_V2_Dec
 //   - Results preserve discovery order (stable lexicographic)
 func (SNMPparameters *SNMPv3Session) snmpv3_Walk(Oid []int, ReqType int) (SNMPData []SNMP_Packet_V2_Decoded_VarBind, err error) {
 	OidVarConverted := []SNMP_Packet_V2_Decoded_VarBind{{Oid, SNMPvbNullValue}}
+	noerrcounter := 0
 	var RetVar []SNMP_Packet_V2_Decoded_VarBind
+	var PrevResult ASNber.ObjectIdentifier = Oid
+	var partialerrst SNMPne_Errors
 	for a := 0; a < SNMP_MAXIMUMWALK; a++ {
 		SNMPGet, SNMPGetErr := SNMPparameters.snmpv3_GetSet(OidVarConverted, ReqType)
 		partialErr := false
+		challf := true
 		if SNMPGetErr != nil {
 			var SNMPud_Err SNMPud_Errors
 			var CommonError error
-			SNMPud_Err, CommonError = ParseError(SNMPGetErr)
+			if noerrcounter > 0 {
+				challf = false
+			}
+			SNMPud_Err, CommonError = internalParseError(SNMPGetErr, challf)
 			if SNMPud_Err.IsFatal || CommonError != nil {
 				//Фатальные ошибки, сразу выходим
 				return RetVar, SNMPGetErr
 			}
 			partialErr = true
+		} else {
+			noerrcounter++
 		}
 		//Обходим результат и проверяем не вышли ли из ветки
 		for _, val := range SNMPGet {
 			//Проверяем не зациклились ли
-			if slices.Equal(OidVarConverted[0].RSnmpOID, val.RSnmpOID) {
+			//Для этого проверяем лексикографический возрастание по сравнению с предыдущим результатом
+			if !CheckOidIncreased(PrevResult, val.RSnmpOID) {
 				reterr := fmt.Errorf("OID is not increased")
 				return RetVar, reterr
 			}
+
 			if InSubTreeCheck(Oid, val.RSnmpOID) == false {
 				//Выши за пределы ветки
 				return RetVar, nil
 			} else {
 				//Нормальная ситуация, добавим данные
+				PrevResult = val.RSnmpOID
 				RetVar = append(RetVar, val)
 			}
 		}
 
 		if partialErr {
+			//Если были результаты без ошибок, а полученная последняя ошибка
+			//говорит о том что по всем OID ошибки или же результат вобще пустой и есть ошибка
+			//То сбросим флаг AllOIDsFail, а так же выставим флаг, что это не первые полученные данные
+			if noerrcounter > 0 {
+				if errors.As(SNMPGetErr, &partialerrst) {
+					partialerrst.AllOIDsFail = false
+					partialerrst.NoFirst = true
+					SNMPGetErr = partialerrst
+				}
+			}
 			return RetVar, SNMPGetErr
 		}
 
 		if len(SNMPGet) > 0 {
-			OidVarConverted[0].RSnmpOID = SNMPGet[len(SNMPGet)-1].RSnmpOID
+			OidVarConverted[0].RSnmpOID = PrevResult
 		} else {
 			return RetVar, nil
 		}
@@ -768,6 +785,7 @@ func (SNMPparameters *SNMPv3Session) snmpv3_Walk(Oid []int, ReqType int) (SNMPDa
 // Closes channel on completion/error/loop/subtree exit.
 func (SNMPparameters *SNMPv3Session) snmpv3_Walk_WChan(ctx context.Context, Oid []int, ReqType int, CData chan<- ChanDataWErr) {
 	var ChanData ChanDataWErr
+	var PrevResult ASNber.ObjectIdentifier = Oid
 	OidVarConverted := []SNMP_Packet_V2_Decoded_VarBind{{Oid, SNMPvbNullValue}}
 	defer close(CData)
 	for a := 0; a < SNMP_MAXIMUMWALK; a++ {
@@ -807,7 +825,8 @@ func (SNMPparameters *SNMPv3Session) snmpv3_Walk_WChan(ctx context.Context, Oid 
 		//Обходим результат и проверяем не вышли ли из ветки
 		for _, val := range Data {
 			//Проверяем не зациклились ли
-			if slices.Equal(OidVarConverted[0].RSnmpOID, val.RSnmpOID) {
+			//Для этого проверяем лексикографический возрастание по сравнению с предыдущим результатом
+			if !CheckOidIncreased(PrevResult, val.RSnmpOID) {
 				//Если да то выйдем с ошибкой, данные не отправляем - это повтор
 				ChanData.Data = SNMP_Packet_V2_Decoded_VarBind{}
 				ChanData.Error = fmt.Errorf("OID is not increased")
@@ -819,10 +838,12 @@ func (SNMPparameters *SNMPv3Session) snmpv3_Walk_WChan(ctx context.Context, Oid 
 				}
 				return
 			}
+
 			if InSubTreeCheck(Oid, val.RSnmpOID) == false {
 				needClose = true
 				break
 			} else {
+				PrevResult = val.RSnmpOID
 				ChanData.Data = val
 				ChanData.Error = nil
 				ChanData.ValidData = true
@@ -854,7 +875,7 @@ func (SNMPparameters *SNMPv3Session) snmpv3_Walk_WChan(ctx context.Context, Oid 
 
 		//Продолжаем Walk
 		if len(Data) > 0 {
-			OidVarConverted[0].RSnmpOID = Data[len(Data)-1].RSnmpOID
+			OidVarConverted[0].RSnmpOID = PrevResult
 		} else {
 			return
 		}
@@ -864,6 +885,7 @@ func (SNMPparameters *SNMPv3Session) snmpv3_Walk_WChan(ctx context.Context, Oid 
 
 func (SNMPparameters *SNMPv3Session) snmpv3_Walk_WCallback(Oid []int, ReqType int, callback func(ChanDataWErr)) {
 	var ChanData ChanDataWErr
+	var PrevResult ASNber.ObjectIdentifier = Oid
 	OidVarConverted := []SNMP_Packet_V2_Decoded_VarBind{{Oid, SNMPvbNullValue}}
 	for a := 0; a < SNMP_MAXIMUMWALK; a++ {
 		Data, Err := SNMPparameters.snmpv3_GetSet(OidVarConverted, ReqType)
@@ -885,7 +907,8 @@ func (SNMPparameters *SNMPv3Session) snmpv3_Walk_WCallback(Oid []int, ReqType in
 		//Обходим результат и проверяем не вышли ли из ветки
 		for _, val := range Data {
 			//Проверяем не зациклились ли
-			if slices.Equal(OidVarConverted[0].RSnmpOID, val.RSnmpOID) {
+			//Для этого проверяем лексикографический возрастание по сравнению с предыдущим результатом
+			if !CheckOidIncreased(PrevResult, val.RSnmpOID) {
 				//Если да то выйдем с ошибкой, данные не отправляем - это повтор
 				ChanData.Data = SNMP_Packet_V2_Decoded_VarBind{}
 				ChanData.Error = fmt.Errorf("OID is not increased")
@@ -893,10 +916,12 @@ func (SNMPparameters *SNMPv3Session) snmpv3_Walk_WCallback(Oid []int, ReqType in
 				callback(ChanData)
 				return
 			}
+
 			if InSubTreeCheck(Oid, val.RSnmpOID) == false {
 				needClose = true
 				break
 			} else {
+				PrevResult = val.RSnmpOID
 				ChanData.Data = val
 				ChanData.Error = nil
 				ChanData.ValidData = true
@@ -918,7 +943,7 @@ func (SNMPparameters *SNMPv3Session) snmpv3_Walk_WCallback(Oid []int, ReqType in
 
 		//Продолжаем Walk
 		if len(Data) > 0 {
-			OidVarConverted[0].RSnmpOID = Data[len(Data)-1].RSnmpOID
+			OidVarConverted[0].RSnmpOID = PrevResult
 		} else {
 			return
 		}

@@ -123,7 +123,7 @@ func (SNMPparameters *SNMPv3Session) receiverV2parser(packet []byte, checkmsg_re
 		}
 		RetVar.V2PDU.VarBinds = append(RetVar.V2PDU.VarBinds, SNMP_Packet_V2_Decoded_VarBind{datain.RSnmpOID, SNMPVar{datain.RSnmpVar.Tag, datain.RSnmpVar.Class, datain.RSnmpVar.IsCompound, datain.RSnmpVar.Bytes}})
 	}
-	if len(partialerr.Failedoids) == len(pdu1.VarBinds) {
+	if len(pdu1.VarBinds) == 0 || (len(partialerr.Failedoids) == len(pdu1.VarBinds)) {
 		partialerr.AllOIDsFail = true
 	}
 
@@ -409,7 +409,7 @@ func (SNMPparameters *SNMPv3Session) receiverV3Bparser(udppayload []byte, SNMPv3
 
 			}
 		}
-		if len(partialerr.Failedoids) == len(pdu1.VarBinds) {
+		if len(pdu1.VarBinds) == 0 || (len(partialerr.Failedoids) == len(pdu1.VarBinds)) {
 			partialerr.AllOIDsFail = true
 		}
 	}
