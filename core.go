@@ -721,7 +721,7 @@ func (SNMPparameters *SNMPv3Session) snmpv3_Walk(Oid []int, ReqType int) (SNMPDa
 				challf = false
 			}
 			SNMPud_Err, CommonError = internalParseError(SNMPGetErr, challf)
-			if SNMPud_Err.IsFatal || CommonError != nil {
+			if CommonError != nil || SNMPud_Err.IsFatal {
 				//Фатальные ошибки, сразу выходим
 				return RetVar, SNMPGetErr
 			}
