@@ -10,6 +10,8 @@ import ASNber "github.com/OlegPowerC/asn1modsnmp"
 
 // Reexport ASN.1 Tags
 // Class=0x00 (Universal)
+//
+//goland:noinspection GoUnusedConst
 const (
 	SNMP_type_BOOLEAN     = ASNber.TagBoolean
 	SNMP_type_INTEGER     = ASNber.TagInteger
