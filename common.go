@@ -81,12 +81,17 @@ func CheckOidIncreased(Oid []int, OidCurrent []int) bool {
 	return true
 }
 
-func (e SNMPwrongReqID_MsgId_Errors) Error() string {
+func (e SNMPwrongRecRequestErrors) Error() string {
 	switch e.ErrorStatusCode {
 	case PARCE_ERR_WRONGMSGID:
-		return "Wrong MsgID"
+		return "wrong MsgID"
 	case PARCE_ERR_WRONGREQID:
-		return "Wrong RequestID"
+
+		return "wrong RequestID"
+	case PARCE_ERR_WRONGSECL_A:
+		return "wrong security level: authentication bit cleared"
+	case PARCE_ERR_WRONGSECL_E:
+		return "wrong security level: encryption bit cleared"
 	}
 	return "unknown error code"
 }

@@ -234,7 +234,6 @@ func snmpv3_Discovery(Ndev NetworkDevice) (SNMPsession *SNMPv3Session, err error
 	} else {
 		Session.SNMPparams.MaxMsgSize = Ndev.SNMPparameters.MaxMsgSize
 	}
-	Session.SNMPparams.rxbuffersize = Session.SNMPparams.MaxMsgSize
 
 	Session.SNMPparams.AuthKey = Ndev.SNMPparameters.AuthKey
 	Session.SNMPparams.PrivKey = Ndev.SNMPparameters.PrivKey
@@ -496,7 +495,7 @@ func (SNMPparameters *SNMPv3Session) sendSnmpv3GetRequestPrototype(oidValue []SN
 	var ReturnSNMPpacker SNMPv3_DecodePacket
 	var SNMPv3Packet []byte
 	var errread error
-	var recerr SNMPwrongReqID_MsgId_Errors
+	var recerr SNMPwrongRecRequestErrors
 	LocalRequestId := atomic.LoadInt32(&SNMPparameters.SNMPparams.MessageIDv2)
 
 	//Формирование запроса
@@ -509,7 +508,9 @@ func (SNMPparameters *SNMPv3Session) sendSnmpv3GetRequestPrototype(oidValue []SN
 		return ReturnSNMPpacker, fmt.Errorf("cannot send data, data too big")
 	}
 
-	p := make([]byte, SNMPparameters.SNMPparams.rxbuffersize)
+	//Выделяем на буфер на 1 байт больше, если придет слишком большая датаграмма, она обрежется до размера буфера
+	//И мы по превышению MaxMsgSize узанаем об этом
+	p := make([]byte, int(SNMPparameters.SNMPparams.MaxMsgSize+1))
 
 	writedn := 0
 	for itertry := 0; itertry < SNMPparameters.SNMPparams.RetryCount; itertry++ {
@@ -540,8 +541,11 @@ func (SNMPparameters *SNMPv3Session) sendSnmpv3GetRequestPrototype(oidValue []SN
 			//Ожидаем данные не позднее Текущее время плюс rdeadLine
 			rlen, readerr := SNMPparameters.conn.Read(p)
 			if readerr == nil {
-				if rlen > int(SNMPparameters.SNMPparams.rxbuffersize) {
-					return ReturnSNMPpacker, fmt.Errorf("received data len bigger than buffer")
+				if rlen > int(SNMPparameters.SNMPparams.MaxMsgSize) {
+					if SNMPparameters.Debuglevel > 199 {
+						fmt.Println("received data len bigger than buffer")
+					}
+					continue
 				}
 				//Ошибок чтения нет
 				//Пакет получен, разберем его
@@ -549,11 +553,10 @@ func (SNMPparameters *SNMPv3Session) sendSnmpv3GetRequestPrototype(oidValue []SN
 				ReturnSNMPpacker, parcerror = SNMPparameters.receiverV3parser(p[:rlen], true, false, LocalRequestId)
 				if parcerror != nil {
 					if errors.As(parcerror, &recerr) {
-						if recerr.ErrorStatusCode == PARCE_ERR_WRONGMSGID || recerr.ErrorStatusCode == PARCE_ERR_WRONGREQID {
-							//Принял ответ но это дубликат или неправильный ID
-							//Просто ждем следующего пакета
-							continue
-						}
+						//Принял ответ, но это дубликат или неправильный ID, или поддельный ответ без аутентификации или шифрования
+						//хотя оно требуется. Просто ждем следующего пакета
+						continue
+
 					} else {
 						return ReturnSNMPpacker, parcerror
 					}
@@ -561,6 +564,11 @@ func (SNMPparameters *SNMPv3Session) sendSnmpv3GetRequestPrototype(oidValue []SN
 				return ReturnSNMPpacker, parcerror
 			} else {
 				//Ошибка чтения
+				if chesockErr(readerr) != nil {
+					//Если принят пакет больше чем размер буфера
+					//то, продолжим ожидать данные
+					continue
+				}
 				errread = readerr
 				var nerror net.Error
 				if errors.As(errread, &nerror) {
@@ -579,7 +587,7 @@ func (SNMPparameters *SNMPv3Session) sendSnmpv3GetRequestPrototype(oidValue []SN
 				}
 			}
 		}
-		//Внутренний цикл завершен но ошибок нет
+		//Внутренний цикл завершен, но ошибок нет
 		if errread == nil {
 			errread = fmt.Errorf("timeout waiting for correct SNMP response")
 		}

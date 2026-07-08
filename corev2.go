@@ -316,7 +316,7 @@ func snmpv2_Init(Ndev NetworkDevice) (SNMPsession *SNMPv3Session, err error) {
 	Session.SNMPparams.SNMPversion = Ndev.SNMPparameters.SNMPversion
 	Session.IPaddress = Ndev.IPaddress
 	Session.Port = Ndev.Port
-	Session.SNMPparams.rxbuffersize = SNMP_BUFFERSIZE
+	Session.SNMPparams.MaxMsgSize = SNMP_BUFFERSIZE
 	if Ndev.SNMPparameters.RetryCount <= 0 || Ndev.SNMPparameters.RetryCount > SNMP_MAXIMUM_RETRY {
 		Session.SNMPparams.RetryCount = SNMP_DEFAULTRETRY
 	} else {
@@ -392,7 +392,7 @@ func (SNMPparameters *SNMPv3Session) sendSnmpv2GetRequestPrototype(oidValue []SN
 	defer SNMPparameters.cmux.Unlock()
 	var SNMPpackerv2_FP SNMPv2_DecodePacket
 	var errread error
-	var recerr SNMPwrongReqID_MsgId_Errors
+	var recerr SNMPwrongRecRequestErrors
 
 	LocalRequestId := atomic.LoadInt32(&SNMPparameters.SNMPparams.MessageIDv2)
 
@@ -401,6 +401,7 @@ func (SNMPparameters *SNMPv3Session) sendSnmpv2GetRequestPrototype(oidValue []SN
 		return SNMPpackerv2_FP, MSerr
 	}
 
+	//Для SNMP v2c, выделяется всегда максимальный буфер
 	p := make([]byte, SNMP_BUFFERSIZE)
 
 	//Делаем несколько попыток получения данных
@@ -433,20 +434,15 @@ func (SNMPparameters *SNMPv3Session) sendSnmpv2GetRequestPrototype(oidValue []SN
 			//Ожидаем данные не позднее Текущее время плюс TMs
 			rlen, readerr := SNMPparameters.conn.Read(p)
 			if readerr == nil {
-				if rlen > int(SNMPparameters.SNMPparams.rxbuffersize) {
-					return SNMPpackerv2_FP, fmt.Errorf("received data len bigger than buffer")
-				}
 				//Ошибок чтения нет
 				//Пакет получен, разберем его
 				var parcerror error
 				SNMPpackerv2_FP, parcerror = SNMPparameters.receiverV2parser(p[:rlen], true, LocalRequestId)
 				if parcerror != nil {
 					if errors.As(parcerror, &recerr) {
-						if recerr.ErrorStatusCode == PARCE_ERR_WRONGMSGID || recerr.ErrorStatusCode == PARCE_ERR_WRONGREQID {
-							//Принял ответ, но это дубликат или неправильный ID
-							//Просто ждем следующего пакета
-							continue
-						}
+						//Принял ответ, но это дубликат или неправильный ID
+						//Просто ждем следующего пакета
+						continue
 					} else {
 						return SNMPpackerv2_FP, parcerror
 					}

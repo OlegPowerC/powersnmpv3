@@ -168,6 +168,42 @@ func TestTrapReceiver(t *testing.T) {
 
 	wg.Add(1)
 	go RecPacket(conn, Userv3Map, &LocParam, &wg)
-	fmt.Println("Press Ctrl+C to stop")
+	fmt.Println(`
+=====================================================================================================================================================================
+Тестирование приема трапов, минимум что требуется проверить:
+Корректный прием Trap/Inform при указании валидных данных
+Корректный прием и подтверждение Inform, с указанным заранее EngineID	
+Корректный прием и подтверждение Inform, без указания EngineID	
+Сообщение об ошибках в случае несовпадения ключей, протоколов или		
+уровней безопасности													
+Посылать Trap/Inform можно с помощью NetSNMP							
+Корректные посылки:	
+Trap
+snmptrap -v 3 -u snmpuser256256 -a SHA-256 -A auth25612345 -l authPriv -x aes-256 -X priv25612345 -e 0x80001f8880f7996d5a41965d69 192.168.0.143 42 coldStart.0
+
+Inform
+snmpinform -v 3 -u snmpuser256256 -a SHA-256 -A auth25612345 -l authPriv -x aes-256 -X priv25612345 -e 0x80001f8880f7996d5a41965d69 192.168.0.143 42 coldStart.0
+
+Inform с Discovery EngineID
+snmpinform -v 3 -u snmpuser256256 -a SHA-256 -A auth25612345 -l authPriv -x aes-256 -X priv25612345 192.168.0.143 42 coldStart.0
+
+Некорректные посылки:
+snmptrap -v 3 -u snmpuser256256 -a SHA-256 -A auth25612345 -l authPriv -x aes-256 -X priv25600000 -e 0x80001f8880f7996d5a41965d69 192.168.0.143 42 coldStart.0
+snmptrap -v 3 -u snmpuser256256 -a SHA-256 -A auth25612345 -l authPriv -x aes -X priv25612345 -e 0x80001f8880f7996d5a41965d69 192.168.0.143 42 coldStart.0
+Должна быть ошибка парсинга ASN.1
+
+snmptrap -v 3 -u snmpuser256256 -a SHA-256 -A auth25610000 -l authPriv -x aes-256 -X priv25603445 -e 0x80001f8880f7996d5a41965d69 192.168.0.143 42 coldStart.0
+snmptrap -v 3 -u snmpuser256256 -a SHA -A auth25612345 -l authPriv -x aes-256 -X priv25603445 -e 0x80001f8880f7996d5a41965d69 192.168.0.143 42 coldStart.0
+Должна быть ошибка аутентификации
+
+snmptrap -v 3 -u snmpuser256256 -a SHA-256 -A auth25612345 -l authNoPriv -x aes-256 -X priv25603445 -e 0x80001f8880f7996d5a41965d69 192.168.0.143 42 coldStart.0
+snmptrap -v 3 -u snmpuser256256 -a SHA-256 -A auth25612345 -l NoauthNoPriv -x aes-256 -X priv25603445 -e 0x80001f8880f7996d5a41965d69 192.168.0.143 42 coldStart.0
+Должна быть ошибка security level
+
+snmptrap -v 3 -u snmpuserFake -a SHA-256 -A auth25612345 -l authPriv -x aes-256 -X priv25612345 -e 0x80001f8880f7996d5a41965d69 192.168.0.143 42 coldStart.0
+Должна быть ошибка - неизвестный пользователь
+===================================================================================================================================================================
+	`)
+
 	wg.Wait()
 }

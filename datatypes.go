@@ -155,7 +155,7 @@ type SNMPne_Errors struct {
 	Failedoids  []PowerSNMPv3_Errors_FailedOids_Error
 }
 
-type SNMPwrongReqID_MsgId_Errors struct {
+type SNMPwrongRecRequestErrors struct {
 	ErrorStatusCode uint8
 }
 
@@ -525,6 +525,5 @@ type SNMPParameters struct {
 	MaxRepetitions   int32
 	MaxMsgSize       uint16
 	txMaxMsgSize     int
-	rxbuffersize     uint16 // Буфер приема для v3
 	Community        string
 }

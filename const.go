@@ -124,8 +124,10 @@ const (
 
 const (
 	// Internal Parser Errors
-	PARCE_ERR_WRONGMSGID = 0xf1
-	PARCE_ERR_WRONGREQID = 0xf2
+	PARCE_ERR_WRONGMSGID  = 0xf1
+	PARCE_ERR_WRONGREQID  = 0xf2
+	PARCE_ERR_WRONGSECL_A = 0xf3
+	PARCE_ERR_WRONGSECL_E = 0xf4
 )
 
 const (

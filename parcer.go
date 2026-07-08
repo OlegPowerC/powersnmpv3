@@ -77,7 +77,7 @@ func (SNMPparameters *SNMPv3Session) receiverV2parser(packet []byte, checkmsg_re
 	}
 
 	if checkmsg_req_id && pdu1.RequestID != reqid {
-		umerr = SNMPwrongReqID_MsgId_Errors{PARCE_ERR_WRONGREQID}
+		umerr = SNMPwrongRecRequestErrors{PARCE_ERR_WRONGREQID}
 		return RetVar, umerr //return ReturnSNMPpacker, errors.New("invalid request id")
 	}
 
@@ -162,7 +162,7 @@ func (SNMPparameters *SNMPv3Session) receiverV3Hparser(udppayload []byte, checkm
 		//Если парсер испоользуется не для приема трапов, то нужно проверить MessageID
 		if checkmsg_req_id {
 			if SNMPDhRetPacket.GlobalData.MsgID != atomic.LoadInt32(&SNMPparameters.SNMPparams.MessageId) {
-				umerr = SNMPwrongReqID_MsgId_Errors{PARCE_ERR_WRONGMSGID}
+				umerr = SNMPwrongRecRequestErrors{PARCE_ERR_WRONGMSGID}
 				return SNMPDhRetPacket, umerr //errors.New("message ID not valid")
 			}
 		} else {
@@ -348,7 +348,33 @@ func (SNMPparameters *SNMPv3Session) receiverV3Bparser(udppayload []byte, SNMPv3
 			}
 			ReturnSNMPpacker.MessageType = INFORM_MESSAGE
 		}
+	}
 
+	//Проверим не Discovery ли это от агента
+	IsDiscoveryRequest := false
+	if !checkmsg_req_id && len(SNMPv3Ppacker.SecuritySettings.AuthEng) == 0 && (len(SNMPv3Ppacker.GlobalData.MsgFlag) == 0 ||
+		(SNMPv3Ppacker.GlobalData.MsgFlag[0]&(1<<msgFlag_Authenticated_Bit) == 0 && SNMPv3Ppacker.GlobalData.MsgFlag[0]&(1<<msgFlag_Encrypted_Bit) == 0)) {
+		IsDiscoveryRequest = true
+	}
+
+	if ReturnSNMPpacker.MessageType != REPORT_MESSAGE && !IsDiscoveryRequest {
+		//Не Report
+		//Задан уровень безопасности как минимум с аутентификацией, если это не Report то нужно убедится что сообщение пришло с флагом аутентификации (и соответственно прошло проверку, иначе была бы ошибка раньше)
+		if SNMPparameters.SNMPparams.AuthProtocol > 0 {
+			if len(SNMPv3Ppacker.GlobalData.MsgFlag) == 0 || SNMPv3Ppacker.GlobalData.MsgFlag[0]&(1<<msgFlag_Authenticated_Bit) == 0 {
+				//Сообщение пришло без аутентификации - генерируем ошибку
+				umerr = SNMPwrongRecRequestErrors{PARCE_ERR_WRONGSECL_A}
+				return ReturnSNMPpacker, umerr
+			}
+		}
+
+		if SNMPparameters.SNMPparams.PrivProtocol > 0 {
+			if len(SNMPv3Ppacker.GlobalData.MsgFlag) == 0 || SNMPv3Ppacker.GlobalData.MsgFlag[0]&(1<<msgFlag_Encrypted_Bit) == 0 {
+				//Сообщение пришло без шифрования - генерируем ошибку
+				umerr = SNMPwrongRecRequestErrors{PARCE_ERR_WRONGSECL_E}
+				return ReturnSNMPpacker, umerr
+			}
+		}
 	}
 
 	if len(Recivedv3_PDU.V2VarBind.FullBytes) < 2 {
@@ -364,7 +390,7 @@ func (SNMPparameters *SNMPv3Session) receiverV3Bparser(udppayload []byte, SNMPv3
 	} else {
 		if checkmsg_req_id && pdu1.RequestID != reqid {
 			if ReturnSNMPpacker.MessageType != REPORT_MESSAGE {
-				umerr = SNMPwrongReqID_MsgId_Errors{PARCE_ERR_WRONGREQID}
+				umerr = SNMPwrongRecRequestErrors{PARCE_ERR_WRONGREQID}
 				return ReturnSNMPpacker, umerr //return ReturnSNMPpacker, errors.New("invalid request id")
 			}
 		}
