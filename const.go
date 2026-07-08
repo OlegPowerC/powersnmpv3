@@ -26,6 +26,8 @@ const (
 //
 // Example: Class=0x01 (Application), Tag=0x03 → 0x43 (APPLICATION 3 = SNMP TIMETICKS)
 // ASN.1 tags represent the type of the following object.
+//
+//goland:noinspection GoUnusedConst
 const (
 	// SNMP Application Types (Class=1)
 	SNMP_type_IPADDR    = 0
