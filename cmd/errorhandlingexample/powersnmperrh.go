@@ -92,7 +92,7 @@ func DemoMultiGET_PartInvalid(Ssess *PowerSNMP.SNMPv3Session) {
 			fmt.Println(IoidErr)
 			return
 		}
-		OidsConverted = append(OidsConverted, PowerSNMP.SNMP_Packet_V2_Decoded_VarBind{Ioid, PowerSNMP.SNMPvbNullValue})
+		OidsConverted = append(OidsConverted, PowerSNMP.SNMP_Packet_V2_Decoded_VarBind{RSnmpOID: Ioid, RSnmpVar: PowerSNMP.SNMPvbNullValue})
 	}
 	GetRes2, verr2 := Ssess.SNMP_GetMulti(OidsConverted)
 
@@ -127,7 +127,7 @@ func DemoMultSET_Invalid(Ssess *PowerSNMP.SNMPv3Session) {
 				fmt.Println(IoidErrS)
 				return
 			}
-			SetDataVB = append(SetDataVB, PowerSNMP.SNMP_Packet_V2_Decoded_VarBind{IoidS, VarData[VdataInd]})
+			SetDataVB = append(SetDataVB, PowerSNMP.SNMP_Packet_V2_Decoded_VarBind{RSnmpOID: IoidS, RSnmpVar: VarData[VdataInd]})
 		}
 	} else {
 		fmt.Println("oid's and data count not equal")
@@ -162,7 +162,7 @@ func DemoMultSET_Valid(Ssess *PowerSNMP.SNMPv3Session) {
 				fmt.Println(IoidErrS)
 				return
 			}
-			SetDataVB = append(SetDataVB, PowerSNMP.SNMP_Packet_V2_Decoded_VarBind{IoidS, VarData[VdataInd]})
+			SetDataVB = append(SetDataVB, PowerSNMP.SNMP_Packet_V2_Decoded_VarBind{RSnmpOID: IoidS, RSnmpVar: VarData[VdataInd]})
 		}
 	} else {
 		fmt.Println("oid's and data count not equal")
