@@ -29,6 +29,7 @@ var (
 	SNMPauthPassword = flag.String("A", "", "SNMP auth password")
 	SNMPprivProtocol = flag.String("x", "", "SNMP priv protocol")
 	SNMPprivPassword = flag.String("X", "", "SNMP priv password")
+	DebugLevel       = flag.Uint("debug", 0, "debug level")
 	MaxMsgSize       = flag.Int("msize", 1380, "MaxMessageSize")
 )
 
@@ -50,6 +51,7 @@ func TestSNMPv3Session_SNMP_Get_Set(t *testing.T) {
 	Nhost.SNMPparameters.Community = *SNMPcommunity
 	Nhost.SNMPparameters.TimeoutBtwRepeat = 1000
 	Nhost.SNMPparameters.RetryCount = 3
+	Nhost.DebugLevel = uint8(*DebugLevel)
 	Ssess, SsessError := SNMP_Init(Nhost)
 	if SsessError != nil {
 		t.Fatalf("Error in SNMPInit: %v", SsessError.Error())
@@ -334,6 +336,7 @@ func TestSNMPv3Session_SNMP_Get_Walk(t *testing.T) {
 	Nhost.SNMPparameters.PrivKey = *SNMPprivPassword
 	Nhost.SNMPparameters.Community = *SNMPcommunity
 	Nhost.SNMPparameters.TimeoutBtwRepeat = 500
+	Nhost.DebugLevel = uint8(*DebugLevel)
 	Nhost.SNMPparameters.MaxMsgSize = uint16(*MaxMsgSize)
 	Nhost.SNMPparameters.RetryCount = 3
 	Ssess, SsessError := SNMP_Init(Nhost)
@@ -455,6 +458,7 @@ func TestSNMPv3Session_SNMP_WalkChain(t *testing.T) {
 	Nhost.SNMPparameters.PrivProtocol = *SNMPprivProtocol
 	Nhost.SNMPparameters.PrivKey = *SNMPprivPassword
 	Nhost.SNMPparameters.Community = *SNMPcommunity
+	Nhost.DebugLevel = uint8(*DebugLevel)
 	Nhost.SNMPparameters.TimeoutBtwRepeat = 500
 	Nhost.SNMPparameters.MaxMsgSize = uint16(*MaxMsgSize)
 	Nhost.SNMPparameters.RetryCount = 3

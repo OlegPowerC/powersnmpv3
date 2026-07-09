@@ -542,7 +542,7 @@ func (SNMPparameters *SNMPv3Session) sendSnmpv3GetRequestPrototype(oidValue []SN
 			rlen, readerr := SNMPparameters.conn.Read(p)
 			if readerr == nil {
 				if rlen > int(SNMPparameters.SNMPparams.MaxMsgSize) {
-					if SNMPparameters.Debuglevel > 199 {
+					if SNMPparameters.Debuglevel > 99 {
 						fmt.Println("received data len bigger than buffer")
 					}
 					continue
@@ -567,6 +567,9 @@ func (SNMPparameters *SNMPv3Session) sendSnmpv3GetRequestPrototype(oidValue []SN
 				if chesockErr(readerr) != nil {
 					//Если принят пакет больше чем размер буфера
 					//то, продолжим ожидать данные
+					if SNMPparameters.Debuglevel > 99 {
+						fmt.Println("receiver err:", readerr)
+					}
 					continue
 				}
 				errread = readerr
