@@ -6,7 +6,7 @@
 // License: MIT
 // Лицензия: MIT
 // Commercial support and custom development available.
-package tests
+package PowerSNMPv3
 
 import (
 	"encoding/hex"
@@ -14,8 +14,6 @@ import (
 	"net"
 	"sync"
 	"testing"
-
-	"github.com/OlegPowerC/powersnmpv3"
 )
 
 const (
@@ -28,18 +26,18 @@ const (
 	SNMPpt_VERSION_3  = 3
 )
 
-func PrTrap(conn net.PacketConn, sourceAddr net.Addr, data []byte, Userv3Map map[string]*PowerSNMPv3.SNMPTrapParameters, SNMPlp *PowerSNMPv3.SNMPLocalParams) {
+func PrTrap(conn net.PacketConn, sourceAddr net.Addr, data []byte, Userv3Map map[string]*SNMPTrapParameters, SNMPlp *SNMPLocalParams) {
 	addr, pok := sourceAddr.(*net.UDPAddr)
 	if !pok {
 		return
 	}
 
-	SNMPver, SNMPv3User, v3ppacket, PuErr := PowerSNMPv3.ParseTrapUsername(data)
+	SNMPver, SNMPv3User, v3ppacket, PuErr := ParseTrapUsername(data)
 	if PuErr != nil {
 		fmt.Println("Ошибка разбора пакета")
 		return
 	}
-	var credentials PowerSNMPv3.SNMPTrapParameters
+	var credentials SNMPTrapParameters
 
 	if SNMPver == SNMPpt_VERSION_3 {
 		if len(SNMPv3User) > 0 {
@@ -82,7 +80,7 @@ func PrTrap(conn net.PacketConn, sourceAddr net.Addr, data []byte, Userv3Map map
 		fmt.Printf("Boots: %d, Time: %d, EngineID %s\r\n", v3ppacket.SecuritySettings.Boots, v3ppacket.SecuritySettings.Time, EngineIdHstr)
 	}
 
-	pversion, pmsgtype, datadec, err := PowerSNMPv3.ParseTrapWithCredentials(conn, sourceAddr, SNMPver, data, &v3ppacket, credentials, SNMPlp, true, 0)
+	pversion, pmsgtype, datadec, err := ParseTrapWithCredentials(conn, sourceAddr, SNMPver, data, &v3ppacket, credentials, SNMPlp, true, 0)
 
 	if err != nil {
 		fmt.Printf("Неудалось разобрать пакет: %v\n", err)
@@ -119,12 +117,12 @@ func PrTrap(conn net.PacketConn, sourceAddr net.Addr, data []byte, Userv3Map map
 	fmt.Println("─────────────────────────────────────────────────────────")
 
 	for _, gdata := range datadec.VarBinds {
-		fmt.Println(PowerSNMPv3.Convert_OID_IntArrayToString_RAW(gdata.RSnmpOID), "=", PowerSNMPv3.Convert_Variable_To_String(gdata.RSnmpVar), ":", PowerSNMPv3.Convert_ClassTag_to_String(gdata.RSnmpVar))
+		fmt.Println(Convert_OID_IntArrayToString_RAW(gdata.RSnmpOID), "=", Convert_Variable_To_String(gdata.RSnmpVar), ":", Convert_ClassTag_to_String(gdata.RSnmpVar))
 	}
 
 }
 
-func RecPacket(conn net.PacketConn, Userv3Map map[string]*PowerSNMPv3.SNMPTrapParameters, LocPr *PowerSNMPv3.SNMPLocalParams, wg *sync.WaitGroup) {
+func RecPacket(conn net.PacketConn, Userv3Map map[string]*SNMPTrapParameters, LocPr *SNMPLocalParams, wg *sync.WaitGroup) {
 	defer wg.Done()
 	buff := make([]byte, 2048)
 	for {
@@ -143,21 +141,21 @@ func RecPacket(conn net.PacketConn, Userv3Map map[string]*PowerSNMPv3.SNMPTrapPa
 }
 
 func TestTrapReceiver(t *testing.T) {
-	var Userv3Map map[string]*PowerSNMPv3.SNMPTrapParameters
+	var Userv3Map map[string]*SNMPTrapParameters
 	var wg sync.WaitGroup
-	var LocParam PowerSNMPv3.SNMPLocalParams
+	var LocParam SNMPLocalParams
 	LocParam.RBoots.Store(2)
 	LocParam.RTime.Store(1270)
 	LocParam.LocalEngineID = []byte{40, 20, 10, 1, 1, 2, 2, 1, 0, 0, 1, 2}
 
-	Userv3Map = make(map[string]*PowerSNMPv3.SNMPTrapParameters)
-	Userv3Map["snmpuser"] = &PowerSNMPv3.SNMPTrapParameters{Username: "snmpuser", AuthProtocol: "sha", AuthKey: "auth12345", PrivProtocol: "aes", PrivKey: "priv12345"}
-	Userv3Map["snmpuser192"] = &PowerSNMPv3.SNMPTrapParameters{Username: "snmpuser192", AuthProtocol: "sha", AuthKey: "pass123456", PrivProtocol: "aes192a", PrivKey: "priv123456"}
-	Userv3Map["snmpuser256"] = &PowerSNMPv3.SNMPTrapParameters{Username: "snmpuser256", AuthProtocol: "sha", AuthKey: "pass123456", PrivProtocol: "aes256a", PrivKey: "priv123456"}
-	Userv3Map["snmpuser256256"] = &PowerSNMPv3.SNMPTrapParameters{Username: "snmpuser256256", AuthProtocol: "sha256", AuthKey: "auth25612345", PrivProtocol: "aes256a", PrivKey: "priv25612345"}
-	Userv3Map["snmpuserm"] = &PowerSNMPv3.SNMPTrapParameters{Username: "snmpuserm", AuthProtocol: "md5", AuthKey: "pass123456", PrivProtocol: "aes", PrivKey: "priv123456"}
-	Userv3Map["snmpuserm192"] = &PowerSNMPv3.SNMPTrapParameters{Username: "snmpuserm192", AuthProtocol: "md5", AuthKey: "pass123456", PrivProtocol: "aes192a", PrivKey: "priv123456"}
-	Userv3Map["snmpuserm256"] = &PowerSNMPv3.SNMPTrapParameters{Username: "snmpuserm256", AuthProtocol: "md5", AuthKey: "pass123456", PrivProtocol: "aes256a", PrivKey: "priv123456"}
+	Userv3Map = make(map[string]*SNMPTrapParameters)
+	Userv3Map["snmpuser"] = &SNMPTrapParameters{Username: "snmpuser", AuthProtocol: "sha", AuthKey: "auth12345", PrivProtocol: "aes", PrivKey: "priv12345"}
+	Userv3Map["snmpuser192"] = &SNMPTrapParameters{Username: "snmpuser192", AuthProtocol: "sha", AuthKey: "pass123456", PrivProtocol: "aes192a", PrivKey: "priv123456"}
+	Userv3Map["snmpuser256"] = &SNMPTrapParameters{Username: "snmpuser256", AuthProtocol: "sha", AuthKey: "pass123456", PrivProtocol: "aes256a", PrivKey: "priv123456"}
+	Userv3Map["snmpuser256256"] = &SNMPTrapParameters{Username: "snmpuser256256", AuthProtocol: "sha256", AuthKey: "auth25612345", PrivProtocol: "aes256a", PrivKey: "priv25612345"}
+	Userv3Map["snmpuserm"] = &SNMPTrapParameters{Username: "snmpuserm", AuthProtocol: "md5", AuthKey: "pass123456", PrivProtocol: "aes", PrivKey: "priv123456"}
+	Userv3Map["snmpuserm192"] = &SNMPTrapParameters{Username: "snmpuserm192", AuthProtocol: "md5", AuthKey: "pass123456", PrivProtocol: "aes192a", PrivKey: "priv123456"}
+	Userv3Map["snmpuserm256"] = &SNMPTrapParameters{Username: "snmpuserm256", AuthProtocol: "md5", AuthKey: "pass123456", PrivProtocol: "aes256a", PrivKey: "priv123456"}
 	conn, err := net.ListenPacket("udp", ":162")
 	if err != nil {
 		panic(err)
