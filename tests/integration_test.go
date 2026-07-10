@@ -8,7 +8,7 @@
 // License: MIT
 // Лицензия: MIT
 // Commercial support and custom development available.
-package PowerSNMPv3
+package tests
 
 import (
 	"context"
@@ -18,6 +18,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/OlegPowerC/powersnmpv3"
 )
 
 var (
@@ -39,7 +41,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestSNMPv3Session_SNMP_Get_Set(t *testing.T) {
-	var Nhost NetworkDevice
+	var Nhost PowerSNMPv3.NetworkDevice
 	Nhost.IPaddress = *Host
 	Nhost.Port = 161
 	Nhost.SNMPparameters.SNMPversion = 2
@@ -52,7 +54,7 @@ func TestSNMPv3Session_SNMP_Get_Set(t *testing.T) {
 	Nhost.SNMPparameters.TimeoutBtwRepeat = 1000
 	Nhost.SNMPparameters.RetryCount = 3
 	Nhost.DebugLevel = uint8(*DebugLevel)
-	Ssess, SsessError := SNMP_Init(Nhost)
+	Ssess, SsessError := PowerSNMPv3.SNMP_Init(Nhost)
 	if SsessError != nil {
 		t.Fatalf("Error in SNMPInit: %v", SsessError.Error())
 	}
@@ -61,7 +63,7 @@ func TestSNMPv3Session_SNMP_Get_Set(t *testing.T) {
 	}
 	t.Log("-------- Get single oid V2 --------")
 	StrOid := "1.3.6.1.2.1.1.6.0" //Sys Location
-	Ioid, _ := ParseOID(StrOid)
+	Ioid, _ := PowerSNMPv3.ParseOID(StrOid)
 
 	GetRes2, verr2 := Ssess.SNMP_Get(Ioid)
 	if verr2 != nil {
@@ -69,13 +71,13 @@ func TestSNMPv3Session_SNMP_Get_Set(t *testing.T) {
 	}
 
 	for _, wl := range GetRes2 {
-		t.Log(Convert_OID_IntArrayToString_RAW(wl.RSnmpOID), "=", Convert_Variable_To_String(wl.RSnmpVar), ":", Convert_ClassTag_to_String(wl.RSnmpVar))
+		t.Log(PowerSNMPv3.Convert_OID_IntArrayToString_RAW(wl.RSnmpOID), "=", PowerSNMPv3.Convert_Variable_To_String(wl.RSnmpVar), ":", PowerSNMPv3.Convert_ClassTag_to_String(wl.RSnmpVar))
 	}
 	t.Log("-------- End --------")
 	t.Log("-------- Set single oids V2 --------")
 
-	var SNMPsv SNMPVar
-	SNMPsv = SetSNMPVar_OctetString("Test location from V2")
+	var SNMPsv PowerSNMPv3.SNMPVar
+	SNMPsv = PowerSNMPv3.SetSNMPVar_OctetString("Test location from V2")
 
 	_, verr2 = Ssess.SNMP_Set(Ioid, SNMPsv)
 	if verr2 != nil {
@@ -84,27 +86,27 @@ func TestSNMPv3Session_SNMP_Get_Set(t *testing.T) {
 	t.Log("-------- End --------")
 	t.Log("-------- Get multiple oids V2 --------")
 	StrOidWA1, StrOidWA2, StrOidWA3 := "1.3.6.1.2.1.1.6.0", "1.3.6.1.2.1.1.99.0", "1.3.6.1.2.1.1.5.0"
-	IoidWA1, _ := Convert_OID_StringToIntArray_RAW(StrOidWA1)
-	IoidWA2, _ := Convert_OID_StringToIntArray_RAW(StrOidWA2)
-	IoidWA3, _ := Convert_OID_StringToIntArray_RAW(StrOidWA3)
+	IoidWA1, _ := PowerSNMPv3.Convert_OID_StringToIntArray_RAW(StrOidWA1)
+	IoidWA2, _ := PowerSNMPv3.Convert_OID_StringToIntArray_RAW(StrOidWA2)
+	IoidWA3, _ := PowerSNMPv3.Convert_OID_StringToIntArray_RAW(StrOidWA3)
 
-	GetOids := []SNMP_Packet_V2_Decoded_VarBind{{IoidWA1, SNMPvbNullValue}, {IoidWA2, SNMPvbNullValue}, {IoidWA3, SNMPvbNullValue}}
+	GetOids := []PowerSNMPv3.SNMP_Packet_V2_Decoded_VarBind{{IoidWA1, PowerSNMPv3.SNMPvbNullValue}, {IoidWA2, PowerSNMPv3.SNMPvbNullValue}, {IoidWA3, PowerSNMPv3.SNMPvbNullValue}}
 	StrOidINV1, StrOidINV2, StrOidINV3 := "1.3.6.1.2.1.1.66.0", "1.3.6.1.2.1.1.99.0", "1.3.6.1.2.1.1.55.0"
-	IoidWAinv1, _ := Convert_OID_StringToIntArray_RAW(StrOidINV1)
-	IoidWAinv2, _ := Convert_OID_StringToIntArray_RAW(StrOidINV2)
-	IoidWAinv3, _ := Convert_OID_StringToIntArray_RAW(StrOidINV3)
-	GetOidsAllInvalid := []SNMP_Packet_V2_Decoded_VarBind{{IoidWAinv1, SNMPvbNullValue}, {IoidWAinv2, SNMPvbNullValue}, {IoidWAinv3, SNMPvbNullValue}}
+	IoidWAinv1, _ := PowerSNMPv3.Convert_OID_StringToIntArray_RAW(StrOidINV1)
+	IoidWAinv2, _ := PowerSNMPv3.Convert_OID_StringToIntArray_RAW(StrOidINV2)
+	IoidWAinv3, _ := PowerSNMPv3.Convert_OID_StringToIntArray_RAW(StrOidINV3)
+	GetOidsAllInvalid := []PowerSNMPv3.SNMP_Packet_V2_Decoded_VarBind{{IoidWAinv1, PowerSNMPv3.SNMPvbNullValue}, {IoidWAinv2, PowerSNMPv3.SNMPvbNullValue}, {IoidWAinv3, PowerSNMPv3.SNMPvbNullValue}}
 
 	Mg, Mgerr := Ssess.SNMP_GetMulti(GetOids)
 	for _, Mgv := range Mg {
-		t.Log(Convert_OID_IntArrayToString_RAW(Mgv.RSnmpOID), "=", Convert_Variable_To_String(Mgv.RSnmpVar), ":", Convert_ClassTag_to_String(Mgv.RSnmpVar))
+		t.Log(PowerSNMPv3.Convert_OID_IntArrayToString_RAW(Mgv.RSnmpOID), "=", PowerSNMPv3.Convert_Variable_To_String(Mgv.RSnmpVar), ":", PowerSNMPv3.Convert_ClassTag_to_String(Mgv.RSnmpVar))
 	}
 	if Mgerr == nil {
 		t.Errorf("expected partial error OID 1.3.6.1.2.1.1.99.0 is NoSuchObject")
 	}
 
 	t.Logf("SNMP v2 Error in SNMP_GetMulti: %v", Mgerr)
-	per, _ := ParseError(Mgerr)
+	per, _ := PowerSNMPv3.ParseError(Mgerr)
 	if per.IsFatal {
 		t.Errorf("expected partial error but got fatal")
 	} else {
@@ -115,7 +117,7 @@ func TestSNMPv3Session_SNMP_Get_Set(t *testing.T) {
 				}
 				if !slices.Equal(per.Oids[0].Failedoid, IoidWA2) {
 
-					t.Errorf("Expected error in OID 1.3.6.1.2.1.1.99.0 but got: %s", Convert_OID_IntArrayToString_RAW(per.Oids[0].Failedoid))
+					t.Errorf("Expected error in OID 1.3.6.1.2.1.1.99.0 but got: %s", PowerSNMPv3.Convert_OID_IntArrayToString_RAW(per.Oids[0].Failedoid))
 				}
 			}
 		}
@@ -133,7 +135,7 @@ func TestSNMPv3Session_SNMP_Get_Set(t *testing.T) {
 	Nhost.SNMPparameters.SNMPversion = 3
 	Nhost.SNMPparameters.MaxMsgSize = uint16(*MaxMsgSize)
 
-	Ssess, SsessError = SNMP_Init(Nhost)
+	Ssess, SsessError = PowerSNMPv3.SNMP_Init(Nhost)
 	if SsessError != nil {
 		t.Fatalf("SNMP v3 Error in SNMPInit: %s", SsessError.Error())
 	}
@@ -149,9 +151,9 @@ func TestSNMPv3Session_SNMP_Get_Set(t *testing.T) {
 	}
 
 	for _, wl := range GetRes3 {
-		t.Log(Convert_OID_IntArrayToString_RAW(wl.RSnmpOID), "=", Convert_Variable_To_String(wl.RSnmpVar), ":", Convert_ClassTag_to_String(wl.RSnmpVar))
-		location := Convert_Variable_To_String(wl.RSnmpVar)
-		if Convert_Variable_To_String(wl.RSnmpVar) != "Test location from V2" {
+		t.Log(PowerSNMPv3.Convert_OID_IntArrayToString_RAW(wl.RSnmpOID), "=", PowerSNMPv3.Convert_Variable_To_String(wl.RSnmpVar), ":", PowerSNMPv3.Convert_ClassTag_to_String(wl.RSnmpVar))
+		location := PowerSNMPv3.Convert_Variable_To_String(wl.RSnmpVar)
+		if PowerSNMPv3.Convert_Variable_To_String(wl.RSnmpVar) != "Test location from V2" {
 			t.Logf("V3 sees: '%s' (V2 SET может иметь разные ACL)", location)
 		} else {
 			t.Logf("V2→V3 VERIFICATION PASS! '%s'", location)
@@ -166,14 +168,14 @@ func TestSNMPv3Session_SNMP_Get_Set(t *testing.T) {
 
 	Mgv3, Mgerrv3 := Ssess.SNMP_GetMulti(GetOids)
 	for _, Mgvv3 := range Mgv3 {
-		t.Log(Convert_OID_IntArrayToString_RAW(Mgvv3.RSnmpOID), "=", Convert_Variable_To_String(Mgvv3.RSnmpVar), ":", Convert_ClassTag_to_String(Mgvv3.RSnmpVar))
+		t.Log(PowerSNMPv3.Convert_OID_IntArrayToString_RAW(Mgvv3.RSnmpOID), "=", PowerSNMPv3.Convert_Variable_To_String(Mgvv3.RSnmpVar), ":", PowerSNMPv3.Convert_ClassTag_to_String(Mgvv3.RSnmpVar))
 	}
 	if Mgerrv3 == nil {
 		t.Errorf("expected partial error OID 1.3.6.1.2.1.1.99.0 is NoSuchObject)")
 	}
 
 	t.Logf("SNMP v3 Error in SNMP_GetMulti: %s", Mgerrv3.Error())
-	perv3, _ := ParseError(Mgerrv3)
+	perv3, _ := PowerSNMPv3.ParseError(Mgerrv3)
 	if perv3.IsFatal {
 		t.Errorf("expected partial error but got fatal")
 	} else {
@@ -184,7 +186,7 @@ func TestSNMPv3Session_SNMP_Get_Set(t *testing.T) {
 				}
 				if !slices.Equal(perv3.Oids[0].Failedoid, IoidWA2) {
 
-					t.Errorf("Expected error in OID 1.3.6.1.2.1.1.99.0 but got: %s", Convert_OID_IntArrayToString_RAW(perv3.Oids[0].Failedoid))
+					t.Errorf("Expected error in OID 1.3.6.1.2.1.1.99.0 but got: %s", PowerSNMPv3.Convert_OID_IntArrayToString_RAW(perv3.Oids[0].Failedoid))
 				}
 			}
 		}
@@ -197,48 +199,48 @@ func TestSNMPv3Session_SNMP_Get_Set(t *testing.T) {
 	Ssess.SNMPparams.EngineID = []byte{0x00, 0x00, 0x00, 0x00, 0x01, 0x01, 0x00, 0x00}
 	// Подставим неверный EngineID в процессе работы, нужно заново локлизовать ключи иначе не расшифровать в WireShark
 
-	if Ssess.SNMPparams.SecurityLevel > SECLEVEL_NOAUTH_NOPRIV {
-		Lkey := makeLocalizedKey(Ssess.SNMPparams.AuthKey, Ssess.SNMPparams.EngineID, Ssess.SNMPparams.AuthProtocol)
+	if Ssess.SNMPparams.SecurityLevel > PowerSNMPv3.SECLEVEL_NOAUTH_NOPRIV {
+		Lkey := PowerSNMPv3.makeLocalizedKey(Ssess.SNMPparams.AuthKey, Ssess.SNMPparams.EngineID, Ssess.SNMPparams.AuthProtocol)
 		Ssess.SNMPparams.LocalizedKeyAuth = Lkey
-		atomic.OrUint32(&Ssess.SNMPparams.DataFlag, 1<<msgFlag_Authenticated_Bit)
+		atomic.OrUint32(&Ssess.SNMPparams.DataFlag, 1<<PowerSNMPv3.msgFlag_Authenticated_Bit)
 	}
 
-	if Ssess.SNMPparams.SecurityLevel == SECLEVEL_AUTHPRIV {
-		Lkey := makeLocalizedKey(Ssess.SNMPparams.PrivKey, Ssess.SNMPparams.EngineID, Ssess.SNMPparams.AuthProtocol)
+	if Ssess.SNMPparams.SecurityLevel == PowerSNMPv3.SECLEVEL_AUTHPRIV {
+		Lkey := PowerSNMPv3.makeLocalizedKey(Ssess.SNMPparams.PrivKey, Ssess.SNMPparams.EngineID, Ssess.SNMPparams.AuthProtocol)
 		switch Ssess.SNMPparams.PrivProtocol {
-		case PRIV_PROTOCOL_AES128:
+		case PowerSNMPv3.PRIV_PROTOCOL_AES128:
 			if len(Lkey) > 16 {
 				Lkey = Lkey[:16]
 			} // Только AES128!
-		case PRIV_PROTOCOL_AES192, PRIV_PROTOCOL_AES256, PRIV_PROTOCOL_AES192A, PRIV_PROTOCOL_AES256A:
-			Lkey = expandPrivKey(Lkey, Ssess.SNMPparams.PrivProtocol, Ssess.SNMPparams.AuthProtocol, Ssess.SNMPparams.EngineID)
+		case PowerSNMPv3.PRIV_PROTOCOL_AES192, PowerSNMPv3.PRIV_PROTOCOL_AES256, PowerSNMPv3.PRIV_PROTOCOL_AES192A, PowerSNMPv3.PRIV_PROTOCOL_AES256A:
+			Lkey = PowerSNMPv3.expandPrivKey(Lkey, Ssess.SNMPparams.PrivProtocol, Ssess.SNMPparams.AuthProtocol, Ssess.SNMPparams.EngineID)
 		}
 		Ssess.SNMPparams.LocalizedKeyPriv = Lkey
 
-		Rpp, RppErr := randUint64()
+		Rpp, RppErr := PowerSNMPv3.randUint64()
 		if RppErr != nil {
 			t.Fatal(RppErr)
 		}
-		RppDes, RppErrDes := randUint32()
+		RppDes, RppErrDes := PowerSNMPv3.randUint32()
 		if RppErrDes != nil {
 			t.Fatal(RppErrDes)
 		}
 
 		Ssess.SNMPparams.PrivParameter = Rpp
 		Ssess.SNMPparams.PrivParameterDes = RppDes
-		atomic.OrUint32(&Ssess.SNMPparams.DataFlag, 1<<msgFlag_Encrypted_Bit)
+		atomic.OrUint32(&Ssess.SNMPparams.DataFlag, 1<<PowerSNMPv3.msgFlag_Encrypted_Bit)
 	}
 
 	MgvAlInv, MgerrvAllInv := Ssess.SNMP_GetMulti(GetOidsAllInvalid)
 	for _, MgvvAlInv := range MgvAlInv {
-		t.Log(Convert_OID_IntArrayToString_RAW(MgvvAlInv.RSnmpOID), "=", Convert_Variable_To_String(MgvvAlInv.RSnmpVar), ":", Convert_ClassTag_to_String(MgvvAlInv.RSnmpVar))
+		t.Log(PowerSNMPv3.Convert_OID_IntArrayToString_RAW(MgvvAlInv.RSnmpOID), "=", PowerSNMPv3.Convert_Variable_To_String(MgvvAlInv.RSnmpVar), ":", PowerSNMPv3.Convert_ClassTag_to_String(MgvvAlInv.RSnmpVar))
 	}
 	if MgerrvAllInv == nil {
 		t.Errorf("expected error when all OIDs are invalid")
 	}
 
 	t.Logf("SNMP v3 Error in SNMP_GetMulti: %s", MgerrvAllInv.Error())
-	pervAllInv, _ := ParseError(MgerrvAllInv)
+	pervAllInv, _ := PowerSNMPv3.ParseError(MgerrvAllInv)
 	if !pervAllInv.IsFatal {
 		t.Errorf("expected fatal error but got partial")
 	} else {
@@ -249,16 +251,16 @@ func TestSNMPv3Session_SNMP_Get_Set(t *testing.T) {
 				}
 				if !slices.Equal(pervAllInv.Oids[0].Failedoid, IoidWAinv1) {
 
-					t.Errorf("Expected error in OID 1.3.6.1.2.1.1.66.0 but got: %s", Convert_OID_IntArrayToString_RAW(pervAllInv.Oids[0].Failedoid))
+					t.Errorf("Expected error in OID 1.3.6.1.2.1.1.66.0 but got: %s", PowerSNMPv3.Convert_OID_IntArrayToString_RAW(pervAllInv.Oids[0].Failedoid))
 				}
 				if !slices.Equal(pervAllInv.Oids[1].Failedoid, IoidWAinv2) {
 
-					t.Errorf("Expected error in OID 1.3.6.1.2.1.1.99.0 but got: %s", Convert_OID_IntArrayToString_RAW(pervAllInv.Oids[1].Failedoid))
+					t.Errorf("Expected error in OID 1.3.6.1.2.1.1.99.0 but got: %s", PowerSNMPv3.Convert_OID_IntArrayToString_RAW(pervAllInv.Oids[1].Failedoid))
 				}
 
 				if !slices.Equal(pervAllInv.Oids[2].Failedoid, IoidWAinv3) {
 
-					t.Errorf("Expected error in OID 1.3.6.1.2.1.1.55.0 but got: %s", Convert_OID_IntArrayToString_RAW(pervAllInv.Oids[2].Failedoid))
+					t.Errorf("Expected error in OID 1.3.6.1.2.1.1.55.0 but got: %s", PowerSNMPv3.Convert_OID_IntArrayToString_RAW(pervAllInv.Oids[2].Failedoid))
 				}
 			} else {
 				t.Errorf("Expected error in 3 OIDs, but got %d:", len(pervAllInv.Oids))
@@ -268,19 +270,19 @@ func TestSNMPv3Session_SNMP_Get_Set(t *testing.T) {
 	t.Log("-------- End --------")
 
 	t.Log("-------- Set multiple oids V3 (one OID is wrong) --------")
-	var SNMPsv3OS SNMPVar
-	SNMPsv3OS = SetSNMPVar_OctetString("Test 6.0")
+	var SNMPsv3OS PowerSNMPv3.SNMPVar
+	SNMPsv3OS = PowerSNMPv3.SetSNMPVar_OctetString("Test 6.0")
 
-	var SNMPsv3OS2 SNMPVar
-	SNMPsv3OS2 = SetSNMPVar_OctetString("Test 5.0")
+	var SNMPsv3OS2 PowerSNMPv3.SNMPVar
+	SNMPsv3OS2 = PowerSNMPv3.SetSNMPVar_OctetString("Test 5.0")
 
 	StrOidWB1, StrOidWB2, StrOidWB3 := "1.3.6.1.2.1.1.6.0", "1.3.6.1.2.1.1.99.0", "1.3.6.1.2.1.1.5.0"
 
-	IoidWB1, _ := ParseOID(StrOidWB1)
-	IoidWB2, _ := ParseOID(StrOidWB2)
-	IoidWB3, _ := ParseOID(StrOidWB3)
+	IoidWB1, _ := PowerSNMPv3.ParseOID(StrOidWB1)
+	IoidWB2, _ := PowerSNMPv3.ParseOID(StrOidWB2)
+	IoidWB3, _ := PowerSNMPv3.ParseOID(StrOidWB3)
 
-	smwerr := []SNMP_Packet_V2_Decoded_VarBind{{IoidWB1, SNMPsv3OS}, {IoidWB2, SNMPsv3OS}, {IoidWB3, SNMPsv3OS2}}
+	smwerr := []PowerSNMPv3.SNMP_Packet_V2_Decoded_VarBind{{IoidWB1, SNMPsv3OS}, {IoidWB2, SNMPsv3OS}, {IoidWB3, SNMPsv3OS2}}
 
 	sdata, verres3 := Ssess.SNMP_SetMulti(smwerr)
 	if verres3 == nil {
@@ -289,7 +291,7 @@ func TestSNMPv3Session_SNMP_Get_Set(t *testing.T) {
 
 	t.Logf("SNMP v3 Error in SNMP_SetMulti: %v", verres3)
 
-	mseterr, _ := ParseError(verres3)
+	mseterr, _ := PowerSNMPv3.ParseError(verres3)
 	if !mseterr.IsFatal {
 		t.Errorf("expected fatal error but got partial")
 	} else {
@@ -300,21 +302,21 @@ func TestSNMPv3Session_SNMP_Get_Set(t *testing.T) {
 				}
 				if !slices.Equal(mseterr.Oids[0].Failedoid, IoidWB2) {
 
-					t.Errorf("Expected error in OID 1.3.6.1.2.1.1.99.0 but got: %s", Convert_OID_IntArrayToString_RAW(mseterr.Oids[0].Failedoid))
+					t.Errorf("Expected error in OID 1.3.6.1.2.1.1.99.0 but got: %s", PowerSNMPv3.Convert_OID_IntArrayToString_RAW(mseterr.Oids[0].Failedoid))
 				}
 			}
 		}
 	}
 
 	for _, sdadac := range sdata {
-		t.Log(Convert_OID_IntArrayToString_RAW(sdadac.RSnmpOID), "=", Convert_Variable_To_String(sdadac.RSnmpVar), ":", Convert_ClassTag_to_String(sdadac.RSnmpVar))
+		t.Log(PowerSNMPv3.Convert_OID_IntArrayToString_RAW(sdadac.RSnmpOID), "=", PowerSNMPv3.Convert_Variable_To_String(sdadac.RSnmpVar), ":", PowerSNMPv3.Convert_ClassTag_to_String(sdadac.RSnmpVar))
 	}
 
 	t.Log("-------- End --------")
 	t.Log("-------- Set location to 'Test location' V3 --------")
 
-	var SNMPsv3 SNMPVar
-	SNMPsv3 = SetSNMPVar_OctetString("Test location")
+	var SNMPsv3 PowerSNMPv3.SNMPVar
+	SNMPsv3 = PowerSNMPv3.SetSNMPVar_OctetString("Test location")
 
 	_, verr3 = Ssess.SNMP_Set(Ioid, SNMPsv3)
 	if verr3 != nil {
@@ -325,7 +327,7 @@ func TestSNMPv3Session_SNMP_Get_Set(t *testing.T) {
 }
 
 func TestSNMPv3Session_SNMP_Get_Walk(t *testing.T) {
-	var Nhost NetworkDevice
+	var Nhost PowerSNMPv3.NetworkDevice
 	Nhost.IPaddress = *Host
 	Nhost.Port = 161
 	Nhost.SNMPparameters.SNMPversion = 3
@@ -339,7 +341,7 @@ func TestSNMPv3Session_SNMP_Get_Walk(t *testing.T) {
 	Nhost.DebugLevel = uint8(*DebugLevel)
 	Nhost.SNMPparameters.MaxMsgSize = uint16(*MaxMsgSize)
 	Nhost.SNMPparameters.RetryCount = 3
-	Ssess, SsessError := SNMP_Init(Nhost)
+	Ssess, SsessError := PowerSNMPv3.SNMP_Init(Nhost)
 	if SsessError != nil {
 		t.Fatalf("Error in SNMPInit: %v", SsessError.Error())
 	}
@@ -348,7 +350,7 @@ func TestSNMPv3Session_SNMP_Get_Walk(t *testing.T) {
 	}
 	t.Log("-------- Walk from OID 1.3.6.1.2.1.2.2.1.2 V3 --------")
 	StrOidW := "1.3.6.1.2.1.2.2.1.2"
-	IoidW, _ := ParseOID(StrOidW)
+	IoidW, _ := PowerSNMPv3.ParseOID(StrOidW)
 
 	WalkRes, verr3w := Ssess.SNMP_Walk(IoidW)
 	if verr3w != nil {
@@ -364,7 +366,7 @@ func TestSNMPv3Session_SNMP_Get_Walk(t *testing.T) {
 	}
 
 	for _, wl := range WalkRes {
-		t.Log(Convert_OID_IntArrayToString_RAW(wl.RSnmpOID), "=", Convert_Variable_To_String(wl.RSnmpVar), ":", Convert_ClassTag_to_String(wl.RSnmpVar))
+		t.Log(PowerSNMPv3.Convert_OID_IntArrayToString_RAW(wl.RSnmpOID), "=", PowerSNMPv3.Convert_Variable_To_String(wl.RSnmpVar), ":", PowerSNMPv3.Convert_ClassTag_to_String(wl.RSnmpVar))
 	}
 	t.Log("-------- End --------")
 	t.Log("-------- Bulk walk from OID 1.3.6.1.2.1.2.2.1.2 V3 --------")
@@ -384,7 +386,7 @@ func TestSNMPv3Session_SNMP_Get_Walk(t *testing.T) {
 	}
 
 	for _, wl := range BWalkRes {
-		t.Log(Convert_OID_IntArrayToString_RAW(wl.RSnmpOID), "=", Convert_Variable_To_String(wl.RSnmpVar), ":", Convert_ClassTag_to_String(wl.RSnmpVar))
+		t.Log(PowerSNMPv3.Convert_OID_IntArrayToString_RAW(wl.RSnmpOID), "=", PowerSNMPv3.Convert_Variable_To_String(wl.RSnmpVar), ":", PowerSNMPv3.Convert_ClassTag_to_String(wl.RSnmpVar))
 	}
 	t.Log("-------- End --------")
 
@@ -396,7 +398,7 @@ func TestSNMPv3Session_SNMP_Get_Walk(t *testing.T) {
 	t.Log("-------- Sitch to V2 --------")
 
 	Nhost.SNMPparameters.SNMPversion = 2
-	Ssess, SsessError = SNMP_Init(Nhost)
+	Ssess, SsessError = PowerSNMPv3.SNMP_Init(Nhost)
 	if SsessError != nil {
 		t.Fatalf("Error in V2 SNMPInit: %v", SsessError.Error())
 	}
@@ -418,7 +420,7 @@ func TestSNMPv3Session_SNMP_Get_Walk(t *testing.T) {
 	}
 
 	for _, wlv2 := range WalkResv2 {
-		t.Log(Convert_OID_IntArrayToString_RAW(wlv2.RSnmpOID), "=", Convert_Variable_To_String(wlv2.RSnmpVar), ":", Convert_ClassTag_to_String(wlv2.RSnmpVar))
+		t.Log(PowerSNMPv3.Convert_OID_IntArrayToString_RAW(wlv2.RSnmpOID), "=", PowerSNMPv3.Convert_Variable_To_String(wlv2.RSnmpVar), ":", PowerSNMPv3.Convert_ClassTag_to_String(wlv2.RSnmpVar))
 	}
 
 	t.Log("-------- End --------")
@@ -437,7 +439,7 @@ func TestSNMPv3Session_SNMP_Get_Walk(t *testing.T) {
 	}
 
 	for _, wlv2 := range WalkResv2 {
-		t.Log(Convert_OID_IntArrayToString_RAW(wlv2.RSnmpOID), "=", Convert_Variable_To_String(wlv2.RSnmpVar), ":", Convert_ClassTag_to_String(wlv2.RSnmpVar))
+		t.Log(PowerSNMPv3.Convert_OID_IntArrayToString_RAW(wlv2.RSnmpOID), "=", PowerSNMPv3.Convert_Variable_To_String(wlv2.RSnmpVar), ":", PowerSNMPv3.Convert_ClassTag_to_String(wlv2.RSnmpVar))
 	}
 
 	Close3Errv2 := Ssess.Close()
@@ -448,7 +450,7 @@ func TestSNMPv3Session_SNMP_Get_Walk(t *testing.T) {
 }
 
 func TestSNMPv3Session_SNMP_WalkChain(t *testing.T) {
-	var Nhost NetworkDevice
+	var Nhost PowerSNMPv3.NetworkDevice
 	Nhost.IPaddress = *Host
 	Nhost.Port = 161
 	Nhost.SNMPparameters.SNMPversion = 3
@@ -462,7 +464,7 @@ func TestSNMPv3Session_SNMP_WalkChain(t *testing.T) {
 	Nhost.SNMPparameters.TimeoutBtwRepeat = 500
 	Nhost.SNMPparameters.MaxMsgSize = uint16(*MaxMsgSize)
 	Nhost.SNMPparameters.RetryCount = 3
-	Ssess, SsessError := SNMP_Init(Nhost)
+	Ssess, SsessError := PowerSNMPv3.SNMP_Init(Nhost)
 	if SsessError != nil {
 		t.Fatalf("Error in SNMPInit: %v", SsessError.Error())
 	}
@@ -471,11 +473,11 @@ func TestSNMPv3Session_SNMP_WalkChain(t *testing.T) {
 	}
 	t.Log("-------- WalkChain from OID 1.3.6.1.2.1.2.2.1.2 V3 --------")
 	StrOidW := "1.3.6.1.2.1.2.2.1.2"
-	IoidW, _ := ParseOID(StrOidW)
+	IoidW, _ := PowerSNMPv3.ParseOID(StrOidW)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
 	defer cancel()
-	ChIn := make(chan ChanDataWErr, 3000)
+	ChIn := make(chan PowerSNMPv3.ChanDataWErr, 3000)
 
 	go Ssess.SNMP_BulkWalk_WChan(ctx, IoidW, ChIn)
 	ResultNumber := 0
@@ -485,7 +487,7 @@ func TestSNMPv3Session_SNMP_WalkChain(t *testing.T) {
 		}
 		ResultNumber++
 		if gdata.ValidData {
-			t.Log(Convert_OID_IntArrayToString_RAW(gdata.Data.RSnmpOID), "=", Convert_Variable_To_String(gdata.Data.RSnmpVar), ":", Convert_ClassTag_to_String(gdata.Data.RSnmpVar))
+			t.Log(PowerSNMPv3.Convert_OID_IntArrayToString_RAW(gdata.Data.RSnmpOID), "=", PowerSNMPv3.Convert_Variable_To_String(gdata.Data.RSnmpVar), ":", PowerSNMPv3.Convert_ClassTag_to_String(gdata.Data.RSnmpVar))
 		}
 	}
 	t.Log("Results: ", ResultNumber)

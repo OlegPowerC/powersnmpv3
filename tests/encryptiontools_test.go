@@ -6,18 +6,20 @@
 // License: MIT
 // Лицензия: MIT
 // Commercial support and custom development available.
-package PowerSNMPv3
+package tests
 
 import (
 	"crypto/des"
 	"testing"
+
+	"github.com/OlegPowerC/powersnmpv3"
 )
 
 func Test_PKCS5Padding(t *testing.T) {
 	TestSequence1 := []byte{0x00, 0x01, 0x02, 0x03, 0x00, 0x01, 0x02, 0x03, 0x02}
 	t.Log("Data before padding:", TestSequence1)
 	blocksise := des.BlockSize
-	PaddedData, perr := fPKCS5Padding(TestSequence1, blocksise, true)
+	PaddedData, perr := PowerSNMPv3.fPKCS5Padding(TestSequence1, blocksise, true)
 	t.Log("Data after padding:", PaddedData)
 	if len(PaddedData) != 16 {
 		t.Error("Wrong padding")
@@ -25,7 +27,7 @@ func Test_PKCS5Padding(t *testing.T) {
 	if perr != nil {
 		t.Error(perr)
 	}
-	UnpaddedData, uperr := fPKCS5UnPadding(PaddedData, blocksise, true)
+	UnpaddedData, uperr := PowerSNMPv3.fPKCS5UnPadding(PaddedData, blocksise, true)
 	t.Log("Data after unpadding:", UnpaddedData)
 	if len(UnpaddedData) != len(TestSequence1) {
 		t.Error("Wrong Unpadding")

@@ -2,12 +2,14 @@
 
 //nolint: gocyclo
 
-package PowerSNMPv3
+package tests
 
 import (
 	"errors"
 	"fmt"
 	"testing"
+
+	"github.com/OlegPowerC/powersnmpv3"
 )
 
 type TestSt struct {
@@ -38,7 +40,7 @@ var (
 //
 //gocyclo:ignore
 func chStructuredErr(t *testing.T, err error, ErrorParam []string, FinalDescr string) {
-	var Serr SNMPSetparameters_Errors
+	var Serr PowerSNMPv3.SNMPSetparameters_Errors
 	t.Helper()
 	founderrn := 0
 	if err != nil {
@@ -76,10 +78,10 @@ func TestSetAuthPrivParamsStToInt(t *testing.T) {
 						PrivProtocol, AuthKey, PrivKey)
 
 					t.Run(TestDescr, func(t *testing.T) {
-						sl, ia, ip, err := CheckSNMPv3StringParams(AuthProtocol, AuthKey, PrivProtocol, PrivKey)
+						sl, ia, ip, err := PowerSNMPv3.CheckSNMPv3StringParams(AuthProtocol, AuthKey, PrivProtocol, PrivKey)
 
-						AuthData, AuthValid := authProtocols[AuthProtocol]
-						PrivData, PrivValid := privhProtocols[PrivProtocol]
+						AuthData, AuthValid := PowerSNMPv3.authProtocols[AuthProtocol]
+						PrivData, PrivValid := PowerSNMPv3.privhProtocols[PrivProtocol]
 
 						var errexsist = false
 						var Expectederrstar []string
@@ -100,7 +102,7 @@ func TestSetAuthPrivParamsStToInt(t *testing.T) {
 								NoneProto = AuthData.non
 							}
 							if !NoneProto { //Протокол auth не пустой, не none, но ключ Auth короткий
-								if len(AuthKey) < SNMP_AUTH_PRIV_KEY_MINLEN {
+								if len(AuthKey) < PowerSNMPv3.SNMP_AUTH_PRIV_KEY_MINLEN {
 									Expectederrstar = append(Expectederrstar, "auth key")
 									FinalMsgErr += "Auth key too short,"
 									errexsist = true
@@ -140,7 +142,7 @@ func TestSetAuthPrivParamsStToInt(t *testing.T) {
 								}
 								if !PrivData.non {
 									//Протокол priv не пустой, не none, но ключ Priv короткий
-									if len(PrivKey) < SNMP_AUTH_PRIV_KEY_MINLEN {
+									if len(PrivKey) < PowerSNMPv3.SNMP_AUTH_PRIV_KEY_MINLEN {
 										Expectederrstar = append(Expectederrstar, "priv key")
 										FinalMsgErr += "Priv key too short,"
 										errexsist = true
@@ -161,7 +163,7 @@ func TestSetAuthPrivParamsStToInt(t *testing.T) {
 								return
 							}
 							if AuthProtocol == "" {
-								if ia != AUTH_PROTOCOL_NONE {
+								if ia != PowerSNMPv3.AUTH_PROTOCOL_NONE {
 									t.Errorf("Expected Auth protocol 0 but got %d", ia)
 								}
 							} else {
@@ -173,7 +175,7 @@ func TestSetAuthPrivParamsStToInt(t *testing.T) {
 							}
 
 							if PrivProtocol == "" {
-								if ip != PRIV_PROTOCOL_NONE {
+								if ip != PowerSNMPv3.PRIV_PROTOCOL_NONE {
 									t.Errorf("Expected Priv protocol 0 but got %d", ip)
 								}
 							} else {
@@ -186,16 +188,16 @@ func TestSetAuthPrivParamsStToInt(t *testing.T) {
 
 							if ia > 0 {
 								if ip == 0 {
-									if sl != SECLEVEL_AUTHNOPRIV {
+									if sl != PowerSNMPv3.SECLEVEL_AUTHNOPRIV {
 										t.Errorf("Expected seclevel 1 but got %d", sl)
 									}
 								} else {
-									if sl != SECLEVEL_AUTHPRIV {
+									if sl != PowerSNMPv3.SECLEVEL_AUTHPRIV {
 										t.Errorf("Expected seclevel 2 but got %d", sl)
 									}
 								}
 							} else {
-								if sl != SECLEVEL_NOAUTH_NOPRIV {
+								if sl != PowerSNMPv3.SECLEVEL_NOAUTH_NOPRIV {
 									t.Errorf("Expected seclevel 0 but got %d", sl)
 								}
 							}
@@ -217,13 +219,13 @@ func TestCheckParamsIPandPortSNMP(t *testing.T) {
 			TestDescr := fmt.Sprintf("IP=%s|PORT=%d", CipAddr.Val, CPort.Val)
 			t.Run(TestDescr, func(t *testing.T) {
 
-				var cND NetworkDevice
+				var cND PowerSNMPv3.NetworkDevice
 				cND.SNMPparameters.SNMPversion = 0
 				cND.IPaddress = "192.168.0.1"
 				cND.Port = 161
 				cND.SNMPparameters.Username = ""
 
-				err := CheckUserParams(cND)
+				err := PowerSNMPv3.CheckUserParams(cND)
 
 				if !CipAddr.Valid {
 					if err == nil {
@@ -248,13 +250,13 @@ func TestBasicCheckParamsVersionSNMP(t *testing.T) {
 		TestDescr := fmt.Sprintf("SNMP version=%d", CVersion.Val)
 		t.Run(TestDescr, func(t *testing.T) {
 
-			var cND NetworkDevice
+			var cND PowerSNMPv3.NetworkDevice
 			cND.IPaddress = "192.168.0.1"
 			cND.Port = 161
 			cND.SNMPparameters.SNMPversion = CVersion.Val
 			cND.SNMPparameters.Username = ""
 
-			err := CheckUserParams(cND)
+			err := PowerSNMPv3.CheckUserParams(cND)
 
 			if !CVersion.Valid {
 				if err == nil {
@@ -271,14 +273,14 @@ func TestBasicCheckParamsVersion2SNMP(t *testing.T) {
 		TestDescr := fmt.Sprintf("SNMP community=%s", CCommunity)
 		t.Run(TestDescr, func(t *testing.T) {
 
-			var cND NetworkDevice
+			var cND PowerSNMPv3.NetworkDevice
 			cND.SNMPparameters.SNMPversion = 2
 			cND.IPaddress = "192.168.0.1"
 			cND.Port = 161
 			cND.SNMPparameters.Username = ""
 			cND.SNMPparameters.Community = CCommunity
 
-			err := CheckUserParams(cND)
+			err := PowerSNMPv3.CheckUserParams(cND)
 
 			if len(CCommunity) == 0 {
 				if err == nil {
@@ -303,7 +305,7 @@ func TestCheckUserParams(t *testing.T) {
 							PrivProtocol, AuthKey, PrivKey)
 
 						t.Run(TestDescr, func(t *testing.T) {
-							var cND NetworkDevice
+							var cND PowerSNMPv3.NetworkDevice
 							cND.SNMPparameters.SNMPversion = 3
 							cND.IPaddress = "192.168.0.1"
 							cND.Port = 161
@@ -313,7 +315,7 @@ func TestCheckUserParams(t *testing.T) {
 							cND.SNMPparameters.AuthKey = AuthKey
 							cND.SNMPparameters.PrivKey = PrivKey
 
-							err := CheckUserParams(cND)
+							err := PowerSNMPv3.CheckUserParams(cND)
 
 							if len(Cuser) == 0 {
 								if err == nil {
@@ -321,8 +323,8 @@ func TestCheckUserParams(t *testing.T) {
 								}
 							}
 
-							AuthData, AuthValid := authProtocols[AuthProtocol]
-							PrivData, PrivValid := privhProtocols[PrivProtocol]
+							AuthData, AuthValid := PowerSNMPv3.authProtocols[AuthProtocol]
+							PrivData, PrivValid := PowerSNMPv3.privhProtocols[PrivProtocol]
 
 							var errexsist = false
 							var Expectederrstar []string
@@ -343,7 +345,7 @@ func TestCheckUserParams(t *testing.T) {
 									NoneProto = AuthData.non
 								}
 								if !NoneProto { //Протокол auth не пустой, не none, но ключ Auth короткий
-									if len(AuthKey) < SNMP_AUTH_PRIV_KEY_MINLEN {
+									if len(AuthKey) < PowerSNMPv3.SNMP_AUTH_PRIV_KEY_MINLEN {
 										Expectederrstar = append(Expectederrstar, "auth key")
 										FinalMsgErr += "Auth key too short,"
 										errexsist = true
@@ -383,7 +385,7 @@ func TestCheckUserParams(t *testing.T) {
 									}
 									if !PrivData.non {
 										//Протокол priv не пустой, не none, но ключ Priv короткий
-										if len(PrivKey) < SNMP_AUTH_PRIV_KEY_MINLEN {
+										if len(PrivKey) < PowerSNMPv3.SNMP_AUTH_PRIV_KEY_MINLEN {
 											Expectederrstar = append(Expectederrstar, "priv key")
 											FinalMsgErr += "Priv key too short,"
 											errexsist = true
