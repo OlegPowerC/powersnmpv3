@@ -3,6 +3,7 @@
 ### Bug Fixes
 - Fixed SHA-2 USM HMAC for SHA-384 and SHA-512 (RFC 7860 / RFC 6234 `crypto/hmac` instead of a 64-byte RFC 3414 pad)
 - Fixed AES-192/AES-256 key expansion for MD5/SHA-1 to use the Blumenthal algorithm (`Kul || H(Kul)`)
+  - Breaking: `aes192`/`aes256` with MD5/SHA-1 now derive different privacy keys than older versions; callers that need the previous behavior should use `aes192c`/`aes256c`.
 
 ### Features
 - Added Cisco/Reeder privacy protocols `"aes192c"` and `"aes256c"`
