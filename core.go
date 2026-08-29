@@ -164,7 +164,7 @@ func (SNMPparameters *SNMPv3Session) embeddedDiscovery(rts SNMPv3_DecodePacket) 
 			if len(Lkey) > 16 {
 				Lkey = Lkey[:16] // Только AES128!
 			}
-		case PRIV_PROTOCOL_AES192, PRIV_PROTOCOL_AES256, PRIV_PROTOCOL_AES192A, PRIV_PROTOCOL_AES256A:
+		case PRIV_PROTOCOL_AES192, PRIV_PROTOCOL_AES256, PRIV_PROTOCOL_AES192A, PRIV_PROTOCOL_AES256A, PRIV_PROTOCOL_AES192C, PRIV_PROTOCOL_AES256C, PRIV_PROTOCOL_3DES:
 			Lkey = expandPrivKey(Lkey, SNMPparameters.SNMPparams.PrivProtocol, SNMPparameters.SNMPparams.AuthProtocol, SNMPparameters.SNMPparams.EngineID)
 		}
 
@@ -201,7 +201,7 @@ func (SNMPparameters *SNMPv3Session) embeddedDiscovery(rts SNMPv3_DecodePacket) 
 // Automatically handles:
 //   - EngineID discovery from REPORT (1.3.6.1.6.3.15.1.1.4.0)
 //   - Key localization (makeLocalizedKey/expandPrivKey)
-//   - AES128/192/256C protocols
+//   - AES-128/192/256 (Blumenthal), Agent++ aes192a/aes256a, Cisco/Reeder aes192c/aes256c, 3DES
 //   - Parameter validation (defaults: Retry=3, Timeout=300ms, MaxRep=25)
 func snmpv3_Discovery(Ndev NetworkDevice) (SNMPsession *SNMPv3Session, err error) {
 	var ReturnError error
@@ -350,13 +350,13 @@ func (SNMPparameters *SNMPv3Session) makeMessage(oidValue []SNMP_Packet_V2_VarBi
 	}
 	if atomic.LoadUint32(&SNMPparameters.SNMPparams.DataFlag)&(1<<msgFlag_Encrypted_Bit) != 0 {
 		switch SNMPparameters.SNMPparams.PrivProtocol {
-		case PRIV_PROTOCOL_AES128, PRIV_PROTOCOL_AES192, PRIV_PROTOCOL_AES256, PRIV_PROTOCOL_AES192A, PRIV_PROTOCOL_AES256A:
+		case PRIV_PROTOCOL_AES128, PRIV_PROTOCOL_AES192, PRIV_PROTOCOL_AES256, PRIV_PROTOCOL_AES192A, PRIV_PROTOCOL_AES256A, PRIV_PROTOCOL_AES192C, PRIV_PROTOCOL_AES256C:
 			//В PrivParameters в пакете SNMP записываем 64 битное значение SNMPsession.SNMPparams.PrivParameter
 			currentPrivParam = atomic.AddUint64(&SNMPparameters.SNMPparams.PrivParameter, 1)
 			SecParamByteArray := make([]byte, 8)
 			binary.BigEndian.PutUint64(SecParamByteArray, currentPrivParam)
 			SNMP_SecuritySequence.PrivParams = SecParamByteArray
-		case PRIV_PROTOCOL_DES:
+		case PRIV_PROTOCOL_DES, PRIV_PROTOCOL_3DES:
 			//Создаем соль и вектор инициализации IV для шифрования данных по протоколу DES
 			//PrivParameterDes имеет случайное 32 битное значение
 			//В PrivParameters в пакете SNMP записываем 64 битное значение Boots + SNMPsession.SNMPparams.PrivParameterDes
@@ -415,7 +415,7 @@ func (SNMPparameters *SNMPv3Session) makeMessage(oidValue []SNMP_Packet_V2_VarBi
 		var EncryptedPdu []byte
 		var Encerr error
 		switch SNMPparameters.SNMPparams.PrivProtocol {
-		case PRIV_PROTOCOL_AES128, PRIV_PROTOCOL_AES192, PRIV_PROTOCOL_AES256, PRIV_PROTOCOL_AES192A, PRIV_PROTOCOL_AES256A:
+		case PRIV_PROTOCOL_AES128, PRIV_PROTOCOL_AES192, PRIV_PROTOCOL_AES256, PRIV_PROTOCOL_AES192A, PRIV_PROTOCOL_AES256A, PRIV_PROTOCOL_AES192C, PRIV_PROTOCOL_AES256C:
 			SecParamByteArray := make([]byte, 8)
 			binary.BigEndian.PutUint64(SecParamByteArray, currentPrivParam)
 			IV := make([]byte, 0)
@@ -447,6 +447,27 @@ func (SNMPparameters *SNMPv3Session) makeMessage(oidValue []SNMP_Packet_V2_VarBi
 				return retbytes, errors.New("encryption error")
 			}
 			break
+		case PRIV_PROTOCOL_3DES:
+			if len(SNMPparameters.SNMPparams.LocalizedKeyPriv) < 32 {
+				return retbytes, errors.New("localized key for 3DES must be 32 bytes")
+			}
+			SecParamByteArray := make([]byte, 4)
+			binary.BigEndian.PutUint32(SecParamByteArray, currentPrivParamDes)
+			Salt := make([]byte, 0)
+			Salt = append(Salt, TBoots...)
+			Salt = append(Salt, SecParamByteArray...)
+
+			Pre_IV := make([]byte, 8)
+			copy(Pre_IV, SNMPparameters.SNMPparams.LocalizedKeyPriv[24:32])
+			IV := make([]byte, 8)
+			for i := 0; i < 8; i++ {
+				IV[i] = Pre_IV[i] ^ Salt[i]
+			}
+
+			EncryptedPdu, Encerr = encrypt3DES(V3PduMarshal, SNMPparameters.SNMPparams.LocalizedKeyPriv[:24], IV)
+			if Encerr != nil {
+				return retbytes, errors.New("encryption error")
+			}
 		case PRIV_PROTOCOL_NONE:
 			return retbytes, errors.New("msgFlag_Encrypted_Bit установлен но priv протокол NONE")
 		default:

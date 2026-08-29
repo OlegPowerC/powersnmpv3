@@ -34,3 +34,33 @@ func Test_PKCS5Padding(t *testing.T) {
 		t.Error(uperr)
 	}
 }
+
+func Test3DESEncryptDecryptRoundTrip(t *testing.T) {
+	plaintext := []byte("0123456789abcdef") // 16 bytes, no PKCS5 pad in SNMPv3 mode
+	key := []byte("12345678abcdefgh87654321") // 24 bytes
+	iv := []byte{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08}
+
+	ct, err := encrypt3DES(plaintext, key, iv)
+	if err != nil {
+		t.Fatalf("encrypt3DES: %v", err)
+	}
+	pt, err := decrypt3DES(ct, key, iv)
+	if err != nil {
+		t.Fatalf("decrypt3DES: %v", err)
+	}
+	if !bytesEqual(pt, plaintext) {
+		t.Fatalf("3DES round-trip mismatch\ngot  %x\nwant %x", pt, plaintext)
+	}
+}
+
+func bytesEqual(a, b []byte) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}

@@ -275,3 +275,58 @@ func encryptDES(src, key, iv []byte) (EncryptedData []byte, err error) {
 	desEncrypter.CryptBlocks(ReturnData, PaddedData)
 	return ReturnData, nil
 }
+
+// decrypt3DES performs SNMPv3 Triple-DES EDE-CBC decryption (draft-reeder-snmpv3-usm-3desede).
+//
+// Parameters:
+//
+//	src - Encrypted ciphertext bytes (CBC-encrypted padded scopedPDU)
+//	key - 24-byte 3DES-EDE privacy key (from expandPrivKey, PRIV_PROTOCOL_3DES)
+//	iv  - 8-byte initialization vector (pre-IV XOR salt)
+func decrypt3DES(src, key, iv []byte) (DecryptedData []byte, err error) {
+	if len(iv) != 8 {
+		return DecryptedData, errors.New("IV length error")
+	}
+	if len(key) != 24 {
+		return DecryptedData, errors.New("Key length error")
+	}
+	if len(src) == 0 || len(src)%8 != 0 {
+		return DecryptedData, errors.New("Source length error")
+	}
+	desBlockDecrypter, err := des.NewTripleDESCipher(key)
+	if err != nil {
+		return nil, err
+	}
+	ReturnData := make([]byte, len(src))
+	desDecrypter := cipher.NewCBCDecrypter(desBlockDecrypter, iv)
+	desDecrypter.CryptBlocks(ReturnData, src)
+	return ReturnData, nil
+}
+
+// encrypt3DES performs SNMPv3 Triple-DES EDE-CBC encryption (draft-reeder-snmpv3-usm-3desede).
+//
+// Parameters:
+//
+//	src - Plaintext bytes to encrypt (scopedPDU)
+//	key - 24-byte 3DES-EDE privacy key (from expandPrivKey, PRIV_PROTOCOL_3DES)
+//	iv  - 8-byte initialization vector (pre-IV XOR salt)
+func encrypt3DES(src, key, iv []byte) (EncryptedData []byte, err error) {
+	if len(iv) != 8 {
+		return EncryptedData, errors.New("IV length error")
+	}
+	if len(key) != 24 {
+		return EncryptedData, errors.New("Key length error")
+	}
+	desBlockEncrypter, err := des.NewTripleDESCipher(key)
+	if err != nil {
+		return nil, err
+	}
+	PaddedData, PadingErr := fPKCS5Padding(src, desBlockEncrypter.BlockSize(), true)
+	if PadingErr != nil {
+		return nil, PadingErr
+	}
+	ReturnData := make([]byte, len(PaddedData))
+	desEncrypter := cipher.NewCBCEncrypter(desBlockEncrypter, iv)
+	desEncrypter.CryptBlocks(ReturnData, PaddedData)
+	return ReturnData, nil
+}

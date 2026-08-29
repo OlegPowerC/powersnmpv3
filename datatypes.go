@@ -26,7 +26,7 @@ var internaluseOID_SysDescr = []int{1, 3, 6, 1, 2, 1, 1, 1, 0}
 var internaluseOID_SysUpTime = []int{1, 3, 6, 1, 2, 1, 1, 3, 0}
 
 var allowedAuthProtoSt []string = []string{"sha", "sha224", "sha256", "sha384", "sha512", "md5", "none"}
-var allowedPrivProtoSt []string = []string{"aes", "aes192", "aes256", "aes192a", "aes256a", "des", "none"}
+var allowedPrivProtoSt []string = []string{"aes", "aes192", "aes256", "aes192a", "aes256a", "aes192c", "aes256c", "des", "3des", "none"}
 
 var authProtocols map[string]authPrivProtocolDescr = map[string]authPrivProtocolDescr{
 	"none":   {non: true, intVar: AUTH_PROTOCOL_NONE},
@@ -44,7 +44,10 @@ var privhProtocols map[string]authPrivProtocolDescr = map[string]authPrivProtoco
 	"aes192a": {non: false, intVar: PRIV_PROTOCOL_AES192A},
 	"aes256":  {non: false, intVar: PRIV_PROTOCOL_AES256},
 	"aes256a": {non: false, intVar: PRIV_PROTOCOL_AES256A},
-	"des":     {non: false, intVar: PRIV_PROTOCOL_DES}}
+	"aes192c": {non: false, intVar: PRIV_PROTOCOL_AES192C},
+	"aes256c": {non: false, intVar: PRIV_PROTOCOL_AES256C},
+	"des":     {non: false, intVar: PRIV_PROTOCOL_DES},
+	"3des":    {non: false, intVar: PRIV_PROTOCOL_3DES}}
 
 var SNMPErrorNames = map[int]string{
 	sNMP_ErrNoError:                           "NoError",

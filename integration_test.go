@@ -210,7 +210,7 @@ func TestSNMPv3Session_SNMP_Get_Set(t *testing.T) {
 			if len(Lkey) > 16 {
 				Lkey = Lkey[:16]
 			} // Только AES128!
-		case PRIV_PROTOCOL_AES192, PRIV_PROTOCOL_AES256, PRIV_PROTOCOL_AES192A, PRIV_PROTOCOL_AES256A:
+		case PRIV_PROTOCOL_AES192, PRIV_PROTOCOL_AES256, PRIV_PROTOCOL_AES192A, PRIV_PROTOCOL_AES256A, PRIV_PROTOCOL_AES192C, PRIV_PROTOCOL_AES256C, PRIV_PROTOCOL_3DES:
 			Lkey = expandPrivKey(Lkey, Ssess.SNMPparams.PrivProtocol, Ssess.SNMPparams.AuthProtocol, Ssess.SNMPparams.EngineID)
 		}
 		Ssess.SNMPparams.LocalizedKeyPriv = Lkey

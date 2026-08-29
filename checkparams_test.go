@@ -22,7 +22,7 @@ type TestInt struct {
 
 var (
 	AuthVariants     = []string{"", "none", "sha", "sha224", "sha256", "sha384", "sha512", "md5", "unmk"}
-	PriVariants      = []string{"", "none", "aes", "aes192", "aes256", "aes192a", "aes256a", "des", "unmk"}
+	PriVariants      = []string{"", "none", "aes", "aes192", "aes256", "aes192a", "aes256a", "aes192c", "aes256c", "des", "3des", "unmk"}
 	KeyVariant       = []string{"", "1234", "12345"}
 	UsersVariant     = []string{"", "user"}
 	CommunityVariant = []string{"", "public"}

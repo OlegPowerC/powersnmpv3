@@ -8,6 +8,7 @@ package PowerSNMPv3
 
 import (
 	"bytes"
+	"crypto/hmac"
 	"crypto/md5"
 	"crypto/sha1"
 	"crypto/sha256"
@@ -19,13 +20,32 @@ import (
 	ASNber "github.com/OlegPowerC/asn1modsnmp"
 )
 
+func hashForAuthProtocol(AuthProtocol int) hash.Hash {
+	switch AuthProtocol {
+	case AUTH_PROTOCOL_MD5:
+		return md5.New()
+	case AUTH_PROTOCOL_SHA:
+		return sha1.New()
+	case AUTH_PROTOCOL_SHA224:
+		return sha256.New224()
+	case AUTH_PROTOCOL_SHA256:
+		return sha256.New()
+	case AUTH_PROTOCOL_SHA384:
+		return sha512.New384()
+	case AUTH_PROTOCOL_SHA512:
+		return sha512.New()
+	default:
+		return sha1.New()
+	}
+}
+
 // makeLocalizedKeyFromBytes generates SNMPv3 USM localized authentication key (RFC 3414 STANDARD).
 //
 // Parameters:
 //
 //	keyBytes    - Raw password bytes (from string or other source)
 //	EngineID    - SNMPv3 EngineID bytes (5-32 bytes, typically 5-13)
-//	AuthProtocol- AUTH_PROTOCOL_* constant (MD5=1, SHA1=2, SHA224=8, SHA256=4, SHA384=5, SHA512=6)
+//	AuthProtocol- AUTH_PROTOCOL_* constant (MD5=1, SHA1=2, SHA224=3, SHA256=4, SHA384=5, SHA512=6)
 //
 // Algorithm (1,048,576 bytes processed):
 //  1. **1M iterations**: Repeat 64-byte password blocks → hash (16K iterations)
@@ -37,23 +57,13 @@ import (
 //
 //	AuthKeyComplete - EngineID-bound localized key (16/20/28/32/48/64 bytes)
 func makeLocalizedKeyFromBytes(keyBytes []byte, EngineID []byte, AuthProtocol int) []byte {
-	var hasf hash.Hash
-	switch AuthProtocol {
-	case AUTH_PROTOCOL_MD5:
-		hasf = md5.New()
-	case AUTH_PROTOCOL_SHA:
-		hasf = sha1.New()
-	case AUTH_PROTOCOL_SHA224:
-		hasf = sha256.New224()
-	case AUTH_PROTOCOL_SHA256:
-		hasf = sha256.New()
-	case AUTH_PROTOCOL_SHA384:
-		hasf = sha512.New384()
-	case AUTH_PROTOCOL_SHA512:
-		hasf = sha512.New()
-	default:
-		hasf = sha1.New()
-	}
+	ku := kuFromBytes(keyBytes, AuthProtocol)
+	return kulFromKu(ku, EngineID, AuthProtocol)
+}
+
+// kuFromBytes runs RFC 3414 password-to-key (1M iterations) without engine localization.
+func kuFromBytes(keyBytes []byte, AuthProtocol int) []byte {
+	hasf := hashForAuthProtocol(AuthProtocol)
 
 	PassBuf := make([]byte, 64)
 	count := 0
@@ -69,17 +79,20 @@ func makeLocalizedKeyFromBytes(keyBytes []byte, EngineID []byte, AuthProtocol in
 		hasf.Write(PassBuf)
 		count += 64
 	}
-	finalykey := hasf.Sum(nil)
+	return hasf.Sum(nil)
+}
 
-	PmKey := make([]byte, (len(finalykey)*2)+len(EngineID))
-	copy(PmKey[0:len(finalykey)], finalykey)
-	copy(PmKey[len(finalykey):len(finalykey)+len(EngineID)], EngineID)
-	copy(PmKey[len(finalykey)+len(EngineID):], finalykey)
+// kulFromKu localizes a Ku key with engine ID per RFC 3414.
+func kulFromKu(ku []byte, EngineID []byte, AuthProtocol int) []byte {
+	hasf := hashForAuthProtocol(AuthProtocol)
 
-	hasf.Reset()
+	PmKey := make([]byte, (len(ku)*2)+len(EngineID))
+	copy(PmKey[0:len(ku)], ku)
+	copy(PmKey[len(ku):len(ku)+len(EngineID)], EngineID)
+	copy(PmKey[len(ku)+len(EngineID):], ku)
+
 	hasf.Write(PmKey)
-	AuthKeyComplete := hasf.Sum(nil)
-	return AuthKeyComplete
+	return hasf.Sum(nil)
 }
 
 // makeLocalizedKey generates SNMPv3 USM localized authentication key from password string.
@@ -88,7 +101,7 @@ func makeLocalizedKeyFromBytes(keyBytes []byte, EngineID []byte, AuthProtocol in
 //
 //	InKey       - Password string (ASCII/UTF-8, typical 8+ chars)
 //	EngineID    - SNMPv3 EngineID bytes (5-32 bytes, typically 5-13)
-//	AuthProtocol- AUTH_PROTOCOL_* constant (MD5=1, SHA1=2, SHA224=8, SHA256=4, SHA384=5, SHA512=6)
+//	AuthProtocol- AUTH_PROTOCOL_* constant (MD5=1, SHA1=2, SHA224=3, SHA256=4, SHA384=5, SHA512=6)
 //
 // Algorithm:
 //
@@ -101,19 +114,103 @@ func makeLocalizedKey(InKey string, EngineID []byte, AuthProtocol int) (Localize
 	return makeLocalizedKeyFromBytes([]byte(InKey), EngineID, AuthProtocol)
 }
 
+// expandPrivKeyReeder extends a localized priv key using the Reeder draft algorithm
+// (Cisco AES192C/AES256C / 3DES / net-snmp _kul_extend_reeder).
+func expandPrivKeyReeder(ku []byte, needLen int, authProto int, engineID []byte) []byte {
+	if len(ku) >= needLen {
+		return ku[:needLen]
+	}
+	result := make([]byte, needLen)
+	kulLen := len(ku)
+	copy(result, ku)
+	need := needLen - kulLen
+	for need > 0 {
+		newKu := kuFromBytes(result[:kulLen], authProto)
+		newKul := kulFromKu(newKu, engineID, authProto)
+		copyLen := need
+		if copyLen > len(newKul) {
+			copyLen = len(newKul)
+		}
+		copy(result[kulLen:], newKul[:copyLen])
+		kulLen += copyLen
+		need -= copyLen
+	}
+	return result
+}
+
+// expandPrivKeyBlumenthal extends a localized key per Blumenthal AES draft (Kul || H(Kul) chaining).
+func expandPrivKeyBlumenthal(ku []byte, needLen int, authProto int) []byte {
+	if len(ku) >= needLen {
+		return ku[:needLen]
+	}
+	result := make([]byte, needLen)
+	kulLen := len(ku)
+	copy(result, ku)
+	need := needLen - kulLen
+
+	hashBits := len(ku) * 8
+	switch authProto {
+	case AUTH_PROTOCOL_MD5:
+		hashBits = 128
+	case AUTH_PROTOCOL_SHA:
+		hashBits = 160
+	case AUTH_PROTOCOL_SHA224:
+		hashBits = 224
+	case AUTH_PROTOCOL_SHA256:
+		hashBits = 256
+	case AUTH_PROTOCOL_SHA384:
+		hashBits = 384
+	case AUTH_PROTOCOL_SHA512:
+		hashBits = 512
+	}
+
+	count := (256 + hashBits - 1) / hashBits
+	if count < 1 {
+		count = 1
+	}
+	for i := 0; i < count && need > 0; i++ {
+		hasher := hashForAuthProtocol(authProto)
+		hasher.Write(result[:kulLen])
+		h := hasher.Sum(nil)
+		copyLen := need
+		if copyLen > len(h) {
+			copyLen = len(h)
+		}
+		copy(result[kulLen:], h[:copyLen])
+		kulLen += copyLen
+		need -= copyLen
+	}
+	return result
+}
+
+func expandPrivKeyAgentPlus(ku []byte, needLen int, authProto int) []byte {
+	if len(ku) >= needLen {
+		return ku[:needLen]
+	}
+	result := make([]byte, needLen)
+	copy(result, ku)
+	hasher := hashForAuthProtocol(authProto)
+	hasher.Write(ku)
+	k2 := hasher.Sum(nil)
+	needed := needLen - len(ku)
+	copy(result[len(ku):], k2[:needed])
+	return result
+}
+
 // expandPrivKey expands authentication key to privacy key size for SNMPv3 USM.
 //
 // Parameters:
 //
 //	ku        - Input authentication key bytes (16/20/32+ bytes from localization)
-//	privProto - PRIV_PROTOCOL_* constant (AES128/192/256/DES/AES192A/AES256A)
+//	privProto - PRIV_PROTOCOL_* constant (AES128/192/256/DES/3DES/AES192A/AES256A/AES192C/AES256C)
 //	authProto - AUTH_PROTOCOL_* constant (determines hash for extension)
 //	engineID  - SNMPv3 EngineID bytes (for recursive localization)
 //
 // Algorithms:
 //
-//	**STANDARD** (AES128/192/256, DES): Truncate or recursive makeLocalizedKeyFromBytes extension
+//	**STANDARD** (AES128/192/256, DES): Truncate or Blumenthal extension
 //	**AGENT++/Huawei** (AES192A/256A): K1=ku | K2=hash(ku) simple padding
+//	**Cisco/Reeder** (AES192C/256C, 3DES): KDF(Kul) → re-localize → append loop
 //
 // Returns:
 //
@@ -128,126 +225,27 @@ func expandPrivKey(ku []byte, privProto int, authProto int, engineID []byte) []b
 
 	case PRIV_PROTOCOL_AES192:
 		if len(ku) >= 24 {
-			// SHA-224/256/384/512 → достаточно байт, просто обрезаем!
 			return ku[0:24]
 		}
-		result := make([]byte, 24)
-
-		if len(ku) >= 20 {
-			// SHA-1 (20 байт): рекурсивная локализация (РАБОТАЕТ!)
-			copy(result[0:20], ku[0:20])
-			ext := makeLocalizedKeyFromBytes(ku[0:20], engineID, authProto)
-			copy(result[20:24], ext[0:4])
-			return result
-
-		} else if len(ku) >= 16 {
-			// MD5 (16 байт): тот же метод рекурсивной локализации
-			copy(result[0:16], ku[0:16])
-			ext := makeLocalizedKeyFromBytes(ku[0:16], engineID, authProto)
-			copy(result[16:24], ext[0:8])
-			return result
-		}
-
-		return result
+		return expandPrivKeyBlumenthal(ku, 24, authProto)
 
 	case PRIV_PROTOCOL_AES256:
 		if len(ku) >= 32 {
-			// SHA-256/384/512 → достаточно байт!
 			return ku[0:32]
 		}
+		return expandPrivKeyBlumenthal(ku, 32, authProto)
 
-		result := make([]byte, 32)
+	case PRIV_PROTOCOL_AES192C:
+		return expandPrivKeyReeder(ku, 24, authProto, engineID)
 
-		if len(ku) >= 20 {
-			// SHA-1: рекурсивная локализация
-			copy(result[0:20], ku[0:20])
-			ext := makeLocalizedKeyFromBytes(ku[0:20], engineID, authProto)
-			copy(result[20:32], ext[0:12])
-			return result
-
-		} else if len(ku) >= 16 {
-			// MD5: тот же метод
-			copy(result[0:16], ku[0:16])
-			ext := makeLocalizedKeyFromBytes(ku[0:16], engineID, authProto)
-			copy(result[16:32], ext[0:16])
-			return result
-		}
-
-		return result
+	case PRIV_PROTOCOL_AES256C, PRIV_PROTOCOL_3DES:
+		return expandPrivKeyReeder(ku, 32, authProto, engineID)
 
 	case PRIV_PROTOCOL_AES192A:
-		// Agent++ метод (Huawei)
-		if len(ku) >= 24 {
-			// SHA-224/256/384/512 → достаточно байт, просто обрезаем!
-			return ku[0:24]
-		}
-
-		result := make([]byte, 24)
-		copy(result, ku) // K1
-
-		if len(ku) < 24 {
-			// K2 = hash(K1)
-			var hasher hash.Hash
-			switch authProto {
-			case AUTH_PROTOCOL_MD5:
-				hasher = md5.New()
-			case AUTH_PROTOCOL_SHA:
-				hasher = sha1.New()
-			case AUTH_PROTOCOL_SHA224:
-				hasher = sha256.New224()
-			case AUTH_PROTOCOL_SHA256:
-				hasher = sha256.New()
-			case AUTH_PROTOCOL_SHA384:
-				hasher = sha512.New384()
-			case AUTH_PROTOCOL_SHA512:
-				hasher = sha512.New()
-			default:
-				hasher = sha1.New()
-			}
-			hasher.Write(ku)
-			k2 := hasher.Sum(nil)
-
-			needed := 24 - len(ku)
-			copy(result[len(ku):], k2[:needed]) // K1 | K2
-		}
-		return result
+		return expandPrivKeyAgentPlus(ku, 24, authProto)
 
 	case PRIV_PROTOCOL_AES256A:
-		// Agent++ метод (Huawei)
-		if len(ku) >= 32 {
-			// SHA-256/384/512 → достаточно байт!
-			return ku[0:32]
-		}
-		result := make([]byte, 32)
-		copy(result, ku) // K1
-
-		if len(ku) < 32 {
-			// K2 = hash(K1)
-			var hasher hash.Hash
-			switch authProto {
-			case AUTH_PROTOCOL_MD5:
-				hasher = md5.New()
-			case AUTH_PROTOCOL_SHA:
-				hasher = sha1.New()
-			case AUTH_PROTOCOL_SHA224:
-				hasher = sha256.New224()
-			case AUTH_PROTOCOL_SHA256:
-				hasher = sha256.New()
-			case AUTH_PROTOCOL_SHA384:
-				hasher = sha512.New384()
-			case AUTH_PROTOCOL_SHA512:
-				hasher = sha512.New()
-			default:
-				hasher = sha1.New()
-			}
-			hasher.Write(ku)
-			k2 := hasher.Sum(nil)
-
-			// Копируем нужное количество байт из K2
-			needed := 32 - len(ku)
-			copy(result[len(ku):], k2[:needed])
-		}
-		return result
+		return expandPrivKeyAgentPlus(ku, 32, authProto)
 
 	case PRIV_PROTOCOL_DES:
 		if len(ku) >= 8 {
@@ -262,49 +260,15 @@ func expandPrivKey(ku []byte, privProto int, authProto int, engineID []byte) []b
 	return ku
 }
 
-// makeDigest computes SNMPv3 USM HMAC authentication digest (RFC 3414).
-//
-// Parameters:
-//
-//	Wmsg         - Complete SNMPv3 packet bytes (for HMAC input)
-//	LocalizedKey - USM localized authentication key (from makeLocalizedKey)
-//	AuthProtocol - AUTH_PROTOCOL_* constant (MD5=1, SHA1=2, SHA224=8, SHA256=4, SHA384=5, SHA512=6)
-//
-// Algorithm:
-//  1. Protocol-specific hash init + digest length (MD5/SHA1=12, SHA256=24 bytes, etc)
-//  2. 64-byte key padding (RFC 2104): zeros + copy LocalizedKey
-//  3. HMAC: (key⊕ipad | msg) → inner → (key⊕opad | inner) → truncate
-//
-// Returns:
-//
-//	digest - Truncated HMAC bytes (protocol-specific length)
-func makeDigest(Wmsg []byte, LocalizedKey []byte, AuthProtocol int) (digest []byte) {
-	var mac hash.Hash
+// makeDigestRFC3414 computes HMAC for MD5 and SHA-1 (RFC 3414 64-byte block).
+func makeDigestRFC3414(Wmsg []byte, LocalizedKey []byte, AuthProtocol int) (digest []byte) {
 	var digestLen int
-
+	mac := hashForAuthProtocol(AuthProtocol)
 	switch AuthProtocol {
-	case AUTH_PROTOCOL_MD5:
-		mac = md5.New()
+	case AUTH_PROTOCOL_MD5, AUTH_PROTOCOL_SHA:
 		digestLen = 12
-	case AUTH_PROTOCOL_SHA:
-		mac = sha1.New()
-		digestLen = 12
-	case AUTH_PROTOCOL_SHA224:
-		mac = sha256.New224()
-		digestLen = 16
-	case AUTH_PROTOCOL_SHA256:
-		mac = sha256.New()
-		digestLen = 24
-	case AUTH_PROTOCOL_SHA384:
-		mac = sha512.New384()
-		digestLen = 32
-	case AUTH_PROTOCOL_SHA512:
-		mac = sha512.New()
-		digestLen = 48
 	default:
-		mac = sha1.New()
 		digestLen = 12
-		break
 	}
 
 	extendedAuthKey := bytes.Repeat([]byte{0x00}, 64)
@@ -328,6 +292,31 @@ func makeDigest(Wmsg []byte, LocalizedKey []byte, AuthProtocol int) (digest []by
 	return mdigestfull[:digestLen]
 }
 
+// makeDigest computes SNMPv3 USM HMAC authentication digest.
+// SHA-2 protocols use RFC 6234 HMAC (RFC 7860); MD5/SHA use RFC 3414.
+func makeDigest(Wmsg []byte, LocalizedKey []byte, AuthProtocol int) (digest []byte) {
+	switch AuthProtocol {
+	case AUTH_PROTOCOL_SHA224:
+		mac := hmac.New(sha256.New224, LocalizedKey)
+		mac.Write(Wmsg)
+		return mac.Sum(nil)[:16]
+	case AUTH_PROTOCOL_SHA256:
+		mac := hmac.New(sha256.New, LocalizedKey)
+		mac.Write(Wmsg)
+		return mac.Sum(nil)[:24]
+	case AUTH_PROTOCOL_SHA384:
+		mac := hmac.New(sha512.New384, LocalizedKey)
+		mac.Write(Wmsg)
+		return mac.Sum(nil)[:32]
+	case AUTH_PROTOCOL_SHA512:
+		mac := hmac.New(sha512.New, LocalizedKey)
+		mac.Write(Wmsg)
+		return mac.Sum(nil)[:48]
+	default:
+		return makeDigestRFC3414(Wmsg, LocalizedKey, AuthProtocol)
+	}
+}
+
 // verifyDigestRAW validates SNMPv3 USM auth digest on raw packet bytes (REPLACEMENT).
 //
 // Finds AuthParams offset/length via ASNber.FindSNMPv3AuthParamsOffset → zero-fill → recalc HMAC → compare.
@@ -346,13 +335,11 @@ func makeDigest(Wmsg []byte, LocalizedKey []byte, AuthProtocol int) (digest []by
 //	Verified - true if HMAC matches (auth valid)
 //	err      - AuthParam parse error or nil
 func verifyDigestRAW(SNMPv3Packet []byte, digest []byte, LocalizedKey []byte, AuthProtocol int) (Verified bool, err error) {
-	//Ищем где расположен AuthParam
 	offset, aplen, ferr := ASNber.FindSNMPv3AuthParamsOffset(SNMPv3Packet)
 	if ferr != nil {
 		return false, ferr
 	}
 
-	//Если смещение равно 0 или оно указывает за пределы пакета то ошибка
 	if offset == 0 || offset+aplen > len(SNMPv3Packet) {
 		return false, errors.New("AuthParam not found")
 	}

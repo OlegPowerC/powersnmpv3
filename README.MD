@@ -33,7 +33,7 @@ Commercial support and custom development available.
 
 - SNMPv2c and SNMPv3 support
 - Authentication: MD5, SHA, SHA-224, SHA-256, SHA-384, SHA-512
-- Encryption: DES, AES-128, AES-192, AES-256 (including AGENT++ variants)
+- Encryption: DES, 3DES, AES-128, AES-192, AES-256 (Blumenthal, Cisco/Reeder AES-C, and AGENT++ variants)
 - SNMP operations: Get, GetMulti, Set, SetMulti, Walk, BulkWalk
 - Streaming operations via channels: Walk_WChan, BulkWalk_WChan
 - TRAP/INFORM reception with automatic ACK
@@ -158,7 +158,7 @@ type SNMPUserParameters struct {
     AuthKey          string // Authentication password (v3)
     AuthProtocol     string // "md5", "sha", "sha224", "sha256", "sha384", "sha512"
     PrivKey          string // Privacy password (v3)
-    PrivProtocol     string // "des", "aes", "aes192", "aes256", "aes192a", "aes256a"
+    PrivProtocol     string // "des", "3des", "aes", "aes192", "aes256", "aes192a", "aes256a", "aes192c", "aes256c"
     ContextName      string // SNMPv3 context (optional)
     RetryCount       int    // Retry count (1-10, default 3)
     TimeoutBtwRepeat int    // Timeout between retries in ms (default 300)
@@ -175,7 +175,7 @@ type SNMPUserParameters struct {
 | AuthKey          | string | Authentication password for v3                                                                                                                                                                                                                                 |
 | AuthProtocol     | string | Authentication protocol "md5", "sha", "sha224", "sha256", "sha384", "sha512"                                                                                                                                                                                   |
 | PrivKey          | string | Privacy password for v3                                                                                                                                                                                                                                        |
-| PrivProtocol     | string | "des", "aes", "aes192", "aes256", "aes192a", "aes256a"                                                                                                                                                                                                         |
+| PrivProtocol     | string | "des", "3des", "aes", "aes192", "aes256", "aes192a", "aes256a", "aes192c", "aes256c"                                                                                                                                                                         |
 | ContextName      | string | Optional SNMP v3 context name. For example, to retrieve a MAC address table for VLAN 10 on a Cisco switch, specify the vlan-10 context                                                                                                                         |
 | RetryCount       | int    | Retry count (1-10, default 3)                                                                                                                                                                                                                                  |
 | TimeoutBtwRepeat | int    | Timeout between retries in ms (default 300). Uses linear backoff: timeout = base × (attempt + 1)                                                                                                                                                               |
@@ -306,7 +306,7 @@ func CheckSNMPv3StringParams(authproto string, authkey string, privproto string,
 **Parameters:**
 - `authproto`: authentication protocol. Supported: "","**none**", "**md5**", "**sha**", "**sha224**", "**sha256**", "**sha384**", "**sha512**".
 - `authkey`: authentication passphrase. Required if authproto is set and != "**none**". Minimum length: **SNMP_AUTH_PRIV_KEY_MINLEN** characters.
-- `privproto`: privacy protocol. Supported: "**none**", "**des**", "**aes**", "**aes192**", "**aes256**", "**aes192a**", "**aes256a**".
+- `privproto`: privacy protocol. Supported: "**none**", "**des**", "**3des**", "**aes**", "**aes192**", "**aes256**", "**aes192a**", "**aes256a**", "**aes192c**", "**aes256c**".
 - `privkey`: privacy passphrase. Required if privproto is set and != "**none**". Minimum length: **SNMP_AUTH_PRIV_KEY_MINLEN** characters.
 - Empty strings for authproto/privproto are treated as "**none**".
 
@@ -1523,6 +1523,9 @@ snmp-server user snmpuser SNMPv3-G v3 auth sha auth12345 priv aes 128 priv12345
 | PRIV_PROTOCOL_AES256 | 4 | "aes256" |
 | PRIV_PROTOCOL_AES192A | 5 | "aes192a" (AGENT++) |
 | PRIV_PROTOCOL_AES256A | 6 | "aes256a" (AGENT++) |
+| PRIV_PROTOCOL_AES192C | 7 | "aes192c" (Cisco/Reeder) |
+| PRIV_PROTOCOL_AES256C | 8 | "aes256c" (Cisco/Reeder) |
+| PRIV_PROTOCOL_3DES | 9 | "3des" (Cisco/SNMP4J) |
 
 ### Limits
 

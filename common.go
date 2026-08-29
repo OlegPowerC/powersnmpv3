@@ -1246,7 +1246,7 @@ func CheckUserParams(ndev NetworkDevice) error {
 //     Minimum length: SNMP_AUTH_PRIV_KEY_MINLEN characters.
 //
 //   - privproto: privacy protocol.
-//     Supported: "none", "des", "aes", "aes192", "aes256", "aes192a", "aes256a".
+//     Supported: "none", "des", "3des", "aes", "aes192", "aes256", "aes192a", "aes256a", "aes192c", "aes256c".
 //
 //   - privkey: privacy passphrase. Required if privproto is set and != "none".
 //     Minimum length: SNMP_AUTH_PRIV_KEY_MINLEN characters.

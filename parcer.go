@@ -241,7 +241,7 @@ func (SNMPparameters *SNMPv3Session) receiverV3Bparser(udppayload []byte, SNMPv3
 					if len(Lkey) > 16 {
 						Lkey = Lkey[:16]
 					} // Только AES128!
-				case PRIV_PROTOCOL_AES192, PRIV_PROTOCOL_AES256, PRIV_PROTOCOL_AES192A, PRIV_PROTOCOL_AES256A:
+				case PRIV_PROTOCOL_AES192, PRIV_PROTOCOL_AES256, PRIV_PROTOCOL_AES192A, PRIV_PROTOCOL_AES256A, PRIV_PROTOCOL_AES192C, PRIV_PROTOCOL_AES256C, PRIV_PROTOCOL_3DES:
 					Lkey = expandPrivKey(Lkey, SNMPparameters.SNMPparams.PrivProtocol, SNMPparameters.SNMPparams.AuthProtocol, SNMPparameters.SNMPparams.EngineID)
 				}
 				SNMPparameters.SNMPparams.LocalizedKeyPriv = Lkey
@@ -270,7 +270,7 @@ func (SNMPparameters *SNMPv3Session) receiverV3Bparser(udppayload []byte, SNMPv3
 		binary.BigEndian.PutUint32(TTime, uint32(SNMPv3Ppacker.SecuritySettings.Time))
 
 		switch SNMPparameters.SNMPparams.PrivProtocol {
-		case PRIV_PROTOCOL_AES128, PRIV_PROTOCOL_AES192, PRIV_PROTOCOL_AES256, PRIV_PROTOCOL_AES192A, PRIV_PROTOCOL_AES256A:
+		case PRIV_PROTOCOL_AES128, PRIV_PROTOCOL_AES192, PRIV_PROTOCOL_AES256, PRIV_PROTOCOL_AES192A, PRIV_PROTOCOL_AES256A, PRIV_PROTOCOL_AES192C, PRIV_PROTOCOL_AES256C:
 			if len(SecParamByteArray) != 8 {
 				umerr = errors.New("security Parameter length != 8 - must be 8 for AES")
 				return ReturnSNMPpacker, umerr
@@ -306,6 +306,28 @@ func (SNMPparameters *SNMPv3Session) receiverV3Bparser(udppayload []byte, SNMPv3
 			}
 
 			DecryptedPDU, umerr = decryptDES(SNMPv3Ppacker.PtData.Bytes, SNMPparameters.SNMPparams.LocalizedKeyPriv[:8], IV)
+			if umerr != nil {
+				return ReturnSNMPpacker, umerr
+			}
+		case PRIV_PROTOCOL_3DES:
+			if len(SecParamByteArray) != 8 {
+				umerr = errors.New("security Parameter - length != 8 - need for 3DES")
+				return ReturnSNMPpacker, umerr
+			}
+			if len(SNMPparameters.SNMPparams.LocalizedKeyPriv) < 32 {
+				umerr = errors.New("localized key for 3DES must be 32 bytes")
+				return ReturnSNMPpacker, umerr
+			}
+			Pre_IV := make([]byte, 8)
+			copy(Pre_IV, SNMPparameters.SNMPparams.LocalizedKeyPriv[24:32])
+			Salt := make([]byte, 0)
+			IV := make([]byte, 8)
+			Salt = append(Salt, SecParamByteArray...)
+			for i := 0; i < 8; i++ {
+				IV[i] = Pre_IV[i] ^ Salt[i]
+			}
+
+			DecryptedPDU, umerr = decrypt3DES(SNMPv3Ppacker.PtData.Bytes, SNMPparameters.SNMPparams.LocalizedKeyPriv[:24], IV)
 			if umerr != nil {
 				return ReturnSNMPpacker, umerr
 			}

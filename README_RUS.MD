@@ -36,7 +36,7 @@
 
 - Поддержка SNMPv2c и SNMPv3
 - Аутентификация: MD5, SHA, SHA-224, SHA-256, SHA-384, SHA-512
-- Шифрование: DES, AES-128, AES-192, AES-256 (включая варианты AGENT++)
+- Шифрование: DES, 3DES, AES-128, AES-192, AES-256 (Blumenthal, Cisco/Reeder AES-C и варианты AGENT++)
 - SNMP операции: Get, GetMulti, Set, SetMulti, Walk, BulkWalk
 - Потоковые операции через каналы: Walk_WChan, BulkWalk_WChan
 - Прием TRAP/INFORM с автоматическим ACK
@@ -161,7 +161,7 @@ type SNMPUserParameters struct {
     AuthKey          string // Authentication password (v3)
     AuthProtocol     string // "md5", "sha", "sha224", "sha256", "sha384", "sha512"
     PrivKey          string // Privacy password (v3)
-    PrivProtocol     string // "des", "aes", "aes192", "aes256", "aes192a", "aes256a"
+    PrivProtocol     string // "des", "3des", "aes", "aes192", "aes256", "aes192a", "aes256a", "aes192c", "aes256c"
     ContextName      string // SNMPv3 context (optional)
     RetryCount       int    // Retry count (1-10, default 3)
     TimeoutBtwRepeat int    // Timeout between retries in ms (default 300)
@@ -177,7 +177,7 @@ type SNMPUserParameters struct {
 | AuthKey          | string | Ключ аутентификации, для v3                                                                                                       |
 | AuthProtocol     | string | Протокол аутентификации "md5", "sha", "sha224", "sha256", "sha384", "sha512"                                                      |
 | PrivKey          | string | Ключ шифрования, для v3                                                                                                           |
-| PrivProtocol     | string | Протокол шифрования "des", "aes", "aes192", "aes256", "aes192a", "aes256a"                                                        |
+| PrivProtocol     | string | Протокол шифрования "des", "3des", "aes", "aes192", "aes256", "aes192a", "aes256a", "aes192c", "aes256c"                           |
 | ContextName      | string | Контекст для SNMP v3 (опционально). К примеру для получения MAC адресов в VLAN 10 на коммутаторах Cisco, укажите контекст vlan-10 |
 | RetryCount       | int    | Количество попыток запроса (1-10, по умолчанию 3)                                                                                 |
 | TimeoutBtwRepeat | int    | Таймаут между запросами (default 300). Используется линейное возрастание таймаута: timeout = base × (attempt + 1)                 |
@@ -309,7 +309,7 @@ func CheckSNMPv3StringParams(authproto string, authkey string, privproto string,
 **Параметры:**
 - `authproto`: протокол аутентификации. поддерживаются: "","**none**", "**md5**", "**sha**", "**sha224**", "**sha256**", "**sha384**", "**sha512**".
 - `authkey`: пароль аутентификации. Протокол аутентификации должен быть не "**none**". Минимальная длинна: **SNMP_AUTH_PRIV_KEY_MINLEN** символов.
-- `privproto`: протокол шифрования. поддерживаются: "**none**", "**des**", "**aes**", "**aes192**", "**aes256**", "**aes192a**", "**aes256a**".
+- `privproto`: протокол шифрования. поддерживаются: "**none**", "**des**", "**3des**", "**aes**", "**aes192**", "**aes256**", "**aes192a**", "**aes256a**", "**aes192c**", "**aes256c**".
 - `privkey`: пароль шифрования. Протокол шифрования должен быть не "**none**". Минимальная длинна: **SNMP_AUTH_PRIV_KEY_MINLEN** символов.
 - Empty strings for authproto/privproto are treated as "**none**".
 
@@ -1543,6 +1543,9 @@ snmp-server user snmpuser SNMPv3-G v3 auth sha auth12345 priv aes 128 priv12345
 | PRIV_PROTOCOL_AES256 | 4 | "aes256" |
 | PRIV_PROTOCOL_AES192A | 5 | "aes192a" (AGENT++) |
 | PRIV_PROTOCOL_AES256A | 6 | "aes256a" (AGENT++) |
+| PRIV_PROTOCOL_AES192C | 7 | "aes192c" (Cisco/Reeder) |
+| PRIV_PROTOCOL_AES256C | 8 | "aes256c" (Cisco/Reeder) |
+| PRIV_PROTOCOL_3DES | 9 | "3des" (Cisco/SNMP4J) |
 
 ### Лимиты
 
