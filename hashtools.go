@@ -281,6 +281,8 @@ func expandPrivKey(ku []byte, privProto int, authProto int, engineID []byte) []b
 func makeDigest(Wmsg []byte, LocalizedKey []byte, AuthProtocol int) (digest []byte) {
 	var mac hash.Hash
 	var digestLen int
+	//Default block size
+	blockSize := 64
 
 	switch AuthProtocol {
 	case AUTH_PROTOCOL_MD5:
@@ -298,22 +300,24 @@ func makeDigest(Wmsg []byte, LocalizedKey []byte, AuthProtocol int) (digest []by
 	case AUTH_PROTOCOL_SHA384:
 		mac = sha512.New384()
 		digestLen = 32
+		blockSize = 128
 	case AUTH_PROTOCOL_SHA512:
 		mac = sha512.New()
 		digestLen = 48
+		blockSize = 128
 	default:
 		mac = sha1.New()
 		digestLen = 12
 		break
 	}
 
-	extendedAuthKey := bytes.Repeat([]byte{0x00}, 64)
-	ipad := bytes.Repeat([]byte{0x36}, 64)
-	opad := bytes.Repeat([]byte{0x5c}, 64)
+	extendedAuthKey := bytes.Repeat([]byte{0x00}, blockSize)
+	ipad := bytes.Repeat([]byte{0x36}, blockSize)
+	opad := bytes.Repeat([]byte{0x5c}, blockSize)
 	copy(extendedAuthKey[:len(LocalizedKey)], LocalizedKey)
-	k1 := make([]byte, 64)
-	k2 := make([]byte, 64)
-	for i := 0; i < 64; i++ {
+	k1 := make([]byte, blockSize)
+	k2 := make([]byte, blockSize)
+	for i := 0; i < blockSize; i++ {
 		k1[i] = extendedAuthKey[i] ^ ipad[i]
 		k2[i] = extendedAuthKey[i] ^ opad[i]
 	}
