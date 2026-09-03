@@ -666,89 +666,89 @@ Result:
 
 ## Huawei
 
-Some data is masked (Engine ID, IP addresses, passwords)
+*Some data is masked (Engine ID, IP addresses, passwords)
 Test do throught VPN
 
 ### Switch
 
---------------------------------------------------------------------------------
-MemberID Role     MAC              Priority   DeviceType         Description
---------------------------------------------------------------------------------
-1        Master   3037-XXXX-XXXX   200        S5735-S24P4XE-V2
-2        Standby  3037-XXXX-XXXX   100        S5735-S24P4XE-V2
---------------------------------------------------------------------------------
+    --------------------------------------------------------------------------------
+    MemberID Role     MAC              Priority   DeviceType         Description
+    --------------------------------------------------------------------------------
+    1        Master   3037-XXXX-XXXX   200        S5735-S24P4XE-V2
+    2        Standby  3037-XXXX-XXXX   100        S5735-S24P4XE-V2
+    --------------------------------------------------------------------------------
 
 USM Users:
 
-User name: md5aes192
-Engine ID: 800007XXXXXXXXXXXXXXXX active
-Authentication Protocol: md5
-Privacy Protocol: aes192
-Group name: SNMPv3-G
-State: Active
-
-User name: md5aes256
-Engine ID: 800007XXXXXXXXXXXXXXXX active
-Authentication Protocol: md5
-Privacy Protocol: aes256
-Group name: SNMPv3-G
-State: Active
-
-User name: sha224aes256
-Engine ID: 800007XXXXXXXXXXXXXXXX active
-Authentication Protocol: sha2-224
-Privacy Protocol: aes256
-Group name: SNMPv3-G
-State: Active
-
-User name: sha256aes256
-Engine ID: 800007XXXXXXXXXXXXXXXX active
-Authentication Protocol: sha2-256
-Privacy Protocol: aes256
-Group name: SNMPv3-G
-State: Active
-
-User name: sha384aes128
-Engine ID: 800007XXXXXXXXXXXXXXXX active
-Authentication Protocol: sha2-384
-Privacy Protocol: aes128
-Group name: SNMPv3-G
-State: Active
-
-User name: sha384aes192
-Engine ID: 800007XXXXXXXXXXXXXXXX active
-Authentication Protocol: sha2-384
-Privacy Protocol: aes192
-Group name: SNMPv3-G
-State: Active
-
-User name: sha384aes256
-Engine ID: 800007XXXXXXXXXXXXXXXX active
-Authentication Protocol: sha2-384
-Privacy Protocol: aes256
-Group name: SNMPv3-G
-State: Active
-
-User name: sha512aes128
-Engine ID: 800007XXXXXXXXXXXXXXXX active
-Authentication Protocol: sha2-512
-Privacy Protocol: aes128
-Group name: SNMPv3-G
-State: Active
-
-User name: sha512aes192
-Engine ID: 800007XXXXXXXXXXXXXXXX active
-Authentication Protocol: sha2-512
-Privacy Protocol: aes192
-Group name: SNMPv3-G
-State: Active
-
-User name: sha512aes256
-Engine ID: 800007XXXXXXXXXXXXXXXX active
-Authentication Protocol: sha2-512
-Privacy Protocol: aes256
-Group name: SNMPv3-G
-State: Active
+    User name: md5aes192
+    Engine ID: 800007XXXXXXXXXXXXXXXX active
+    Authentication Protocol: md5
+    Privacy Protocol: aes192
+    Group name: SNMPv3-G
+    State: Active
+    
+    User name: md5aes256
+    Engine ID: 800007XXXXXXXXXXXXXXXX active
+    Authentication Protocol: md5
+    Privacy Protocol: aes256
+    Group name: SNMPv3-G
+    State: Active
+    
+    User name: sha224aes256
+    Engine ID: 800007XXXXXXXXXXXXXXXX active
+    Authentication Protocol: sha2-224
+    Privacy Protocol: aes256
+    Group name: SNMPv3-G
+    State: Active
+    
+    User name: sha256aes256
+    Engine ID: 800007XXXXXXXXXXXXXXXX active
+    Authentication Protocol: sha2-256
+    Privacy Protocol: aes256
+    Group name: SNMPv3-G
+    State: Active
+    
+    User name: sha384aes128
+    Engine ID: 800007XXXXXXXXXXXXXXXX active
+    Authentication Protocol: sha2-384
+    Privacy Protocol: aes128
+    Group name: SNMPv3-G
+    State: Active
+    
+    User name: sha384aes192
+    Engine ID: 800007XXXXXXXXXXXXXXXX active
+    Authentication Protocol: sha2-384
+    Privacy Protocol: aes192
+    Group name: SNMPv3-G
+    State: Active
+    
+    User name: sha384aes256
+    Engine ID: 800007XXXXXXXXXXXXXXXX active
+    Authentication Protocol: sha2-384
+    Privacy Protocol: aes256
+    Group name: SNMPv3-G
+    State: Active
+    
+    User name: sha512aes128
+    Engine ID: 800007XXXXXXXXXXXXXXXX active
+    Authentication Protocol: sha2-512
+    Privacy Protocol: aes128
+    Group name: SNMPv3-G
+    State: Active
+    
+    User name: sha512aes192
+    Engine ID: 800007XXXXXXXXXXXXXXXX active
+    Authentication Protocol: sha2-512
+    Privacy Protocol: aes192
+    Group name: SNMPv3-G
+    State: Active
+    
+    User name: sha512aes256
+    Engine ID: 800007XXXXXXXXXXXXXXXX active
+    Authentication Protocol: sha2-512
+    Privacy Protocol: aes256
+    Group name: SNMPv3-G
+    State: Active
 
 Command:
 
