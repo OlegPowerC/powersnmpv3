@@ -42,3 +42,24 @@ This provides better error semantics: complete failure = fatal error.
 - Removed byte manipulation hack for PDU parsing
 - Clean ASN.1 parsing using standard mechanisms
 ### hide Discovery function
+
+## v1.6.6 Sep 03, 2026
+
+### Bug Fixes
+- Fixed key expansion for SHA-384 and SHA-512.
+- Fixed a bug in the GitHub Actions workflow.
+
+### Improvements
+- Replaced the manual HMAC calculation with the standard library function.
+  The manual implementation is still available and can be enabled with the `manual_hmac` build tag.
+- Added the `repetitions` key to the integration test with a default value of 10.
+
+### Documentation
+- Explained the naming of key expansion methods.
+- Added logs from real-world tests.
+
+### Lab tests
+Multiple test for auth/priv verification using next devices:
+- Cisco Catalyst WS-C3850-24XS-S
+- Cisco ASA 5508
+- Huawei S5735-S24P4XE-V2
