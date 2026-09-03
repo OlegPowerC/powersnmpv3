@@ -1442,14 +1442,14 @@ Command:
 
 Result:
 
-=== RUN   TestSNMPv3Session_SNMP_WalkChain
-integration_test.go:476: -------- WalkChain from OID 1.3.6.1.2.1.2.2.1.2 V3 --------
-integration_test.go:492: 1.3.6.1.2.1.2.2.1.2.1 = lo : Universal OCTET STRING
-integration_test.go:492: 1.3.6.1.2.1.2.2.1.2.2 = eno1 : Universal OCTET STRING
-integration_test.go:492: 1.3.6.1.2.1.2.2.1.2.3 = enp4s0 : Universal OCTET STRING
-integration_test.go:492: 1.3.6.1.2.1.2.2.1.2.4 = enp1s0f0np0 : Universal OCTET STRING
-integration_test.go:492: 1.3.6.1.2.1.2.2.1.2.5 = enp1s0f1np1 : Universal OCTET STRING
-integration_test.go:495: Results:  5
---- PASS: TestSNMPv3Session_SNMP_WalkChain (0.04s)
-PASS
-ok      github.com/OlegPowerC/powersnmpv3       0.607s
+    === RUN   TestSNMPv3Session_SNMP_WalkChain
+    integration_test.go:476: -------- WalkChain from OID 1.3.6.1.2.1.2.2.1.2 V3 --------
+    integration_test.go:492: 1.3.6.1.2.1.2.2.1.2.1 = lo : Universal OCTET STRING
+    integration_test.go:492: 1.3.6.1.2.1.2.2.1.2.2 = eno1 : Universal OCTET STRING
+    integration_test.go:492: 1.3.6.1.2.1.2.2.1.2.3 = enp4s0 : Universal OCTET STRING
+    integration_test.go:492: 1.3.6.1.2.1.2.2.1.2.4 = enp1s0f0np0 : Universal OCTET STRING
+    integration_test.go:492: 1.3.6.1.2.1.2.2.1.2.5 = enp1s0f1np1 : Universal OCTET STRING
+    integration_test.go:495: Results:  5
+    --- PASS: TestSNMPv3Session_SNMP_WalkChain (0.04s)
+    PASS
+    ok      github.com/OlegPowerC/powersnmpv3       0.607s
