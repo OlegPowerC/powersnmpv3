@@ -42,6 +42,21 @@ Commercial support and custom development available.
 - IPv4/Pv6 supported
 
 ---
+### Terminology Mismatches
+
+Key expansion methods do not have a standardized naming convention. In practice, there are only two primary methods:
+
+| Attribute                     | Method 1: Cisco/Reeder                                             | Method 2: Blumenthal-Wiener             |
+|-------------------------------|--------------------------------------------------------------------|-----------------------------------------|
+| **Library Identifier**        | `aes192`, `aes256`                                                 | `aes192a`, `aes256a`  (*a* = AGENT++)   |
+| **Wireshark Name**            | `draft-reeder-snmpv3-usm-3desede-00`                               | `AGENT++`                               |
+| **Common Names**              | Cisco, Reeder, Draft-Reeder                                        | Blumenthal, Blumenthal-Wiener           |
+| **Other Library Identifiers** | `aes192c`, `aes256c` (*c* = Cisco)                                 | `aes192`, `aes256`                      |
+| **IETF Draft Names**          | `draft-reeder-snmpv3-usm-3desede-00`, 3DES-EDE Extension           | `draft-blumenthal-aes-usm-04`           |
+| **Vendor / Software Names**   | Cisco Style, Cisco Extension, Standard                             | AGENT++, AgentPlusPlus, Alternative AES |
+| **Notes**                     | Default variant in this library (no suffix)                        | Use for Huawei switches                 |
+
+---
 
 ## Installation
 

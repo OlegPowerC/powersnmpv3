@@ -31,6 +31,7 @@ var (
 	SNMPprivPassword = flag.String("X", "", "SNMP priv password")
 	DebugLevel       = flag.Uint("debug", 0, "debug level")
 	MaxMsgSize       = flag.Int("msize", 1380, "MaxMessageSize")
+	MaxRepetitions   = flag.Int("repetitions", 10, "Max repetitions in bulk request")
 )
 
 func TestMain(m *testing.M) {
@@ -458,6 +459,9 @@ func TestSNMPv3Session_SNMP_WalkChain(t *testing.T) {
 	Nhost.SNMPparameters.PrivProtocol = *SNMPprivProtocol
 	Nhost.SNMPparameters.PrivKey = *SNMPprivPassword
 	Nhost.SNMPparameters.Community = *SNMPcommunity
+	if *MaxRepetitions > 0 && *MaxRepetitions <= 255 {
+		Nhost.SNMPparameters.MaxRepetitions = uint16(*MaxRepetitions)
+	}
 	Nhost.DebugLevel = uint8(*DebugLevel)
 	Nhost.SNMPparameters.TimeoutBtwRepeat = 500
 	Nhost.SNMPparameters.MaxMsgSize = uint16(*MaxMsgSize)
